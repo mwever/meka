@@ -1,0 +1,83 @@
+plugins {
+	id 'java'
+	id 'eclipse-wtp'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src/main/java'
+            srcDir 'analyses'
+        }
+        resources {
+        	srcDir 'conf'
+    	}
+    }
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives sourcesJar
+}
+
+dependencies {
+	
+	// https://mvnrepository.com/artifact/com.googlecode.jfilechooser-bookmarks/jfilechooser-bookmarks
+	compile group: 'com.googlecode.jfilechooser-bookmarks', name: 'jfilechooser-bookmarks', version: '0.1.0'
+	
+	// https://mvnrepository.com/artifact/nz.ac.waikato.cms.weka/weka-stable
+	compile group: 'nz.ac.waikato.cms.weka', name: 'weka-stable', version: '3.9.2'
+
+	compile group: 'com.github.fracpete', name: 'multisearch-weka-package', version: '2017.10.1'
+	
+	// https://mvnrepository.com/artifact/junit/junit
+	testCompile group: 'junit', name: 'junit', version: '4.12'
+
+	compile 'org.slf4j:slf4j-api:1.7.13'
+	runtime 'org.slf4j:slf4j-log4j12:1.7.13', 'log4j:log4j:1.2.17'
+	
+	// https://mvnrepository.com/artifact/org.kramerlab/bmad
+	compile group: 'org.kramerlab', name: 'bmad', version: '2.4'
+	
+	// https://mvnrepository.com/artifact/gov.nist.math/jama
+	compile group: 'gov.nist.math', name: 'jama', version: '1.0.3'
+	
+	// https://mvnrepository.com/artifact/com.jidesoft/jide-common
+	compile group: 'com.jidesoft', name: 'jide-common', version: '3.5.15'
+	
+	// https://mvnrepository.com/artifact/com.jidesoft/jide-components
+	compile group: 'com.jidesoft', name: 'jide-components', version: '3.5.15'
+	
+	// https://mvnrepository.com/artifact/net.sf.meka.thirdparty/mulan
+	compile group: 'net.sf.meka.thirdparty', name: 'mulan', version: '1.4.0'
+	
+	// https://mvnrepository.com/artifact/net.sf.trove4j/trove4j
+	compile group: 'net.sf.trove4j', name: 'trove4j', version: '3.0.1'
+	
+	// https://mvnrepository.com/artifact/com.jidesoft/jide-oss
+	compile group: 'com.jidesoft', name: 'jide-oss', version: '3.6.18'
+	
+	// https://mvnrepository.com/artifact/com.github.fracpete/jclipboardhelper
+	compile group: 'com.github.fracpete', name: 'jclipboardhelper', version: '0.1.1'
+	
+	// https://mvnrepository.com/artifact/org.markdownj/markdownj
+	compile group: 'org.markdownj', name: 'markdownj', version: '0.3.0-1.0.2b4'
+
+	// https://mvnrepository.com/artifact/net.sf.meka.thirdparty/mst
+	compile group: 'net.sf.meka.thirdparty', name: 'mst', version: '4.0'
+	
+	// https://mvnrepository.com/artifact/org.kramerlab/autoencoder
+	compile group: 'org.kramerlab', name: 'autoencoder', version: '0.1'
+}
+
+repositories {
+	mavenLocal()
+    mavenCentral()
+    flatDir {
+    	dirs 'lib'
+    }
+}

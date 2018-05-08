@@ -22,12 +22,13 @@ package meka.gui.core;
 
 import com.googlecode.jfilechooserbookmarks.gui.BasePanel;
 import com.googlecode.jfilechooserbookmarks.gui.BaseScrollPane;
-import org.markdownj.MarkdownProcessor;
+import com.petebevin.markdown.MarkdownProcessor;
+
+import java.awt.BorderLayout;
 
 import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.text.Document;
-import java.awt.BorderLayout;
 
 /**
  * Renders Markdown text.
@@ -35,144 +36,147 @@ import java.awt.BorderLayout;
  * @author FracPete (fracpete at waikato dot ac dot nz)
  * @version $Revision$
  */
-public class MarkdownTextPane
-	extends BasePanel {
+public class MarkdownTextPane extends BasePanel {
 
-	private static final long serialVersionUID = -3021897813785552183L;
+  private static final long serialVersionUID = -3021897813785552183L;
 
-	/** the markdown processor. */
-	protected MarkdownProcessor m_Processor;
+  /** the markdown processor. */
+  protected MarkdownProcessor m_Processor;
 
-	/** the markdown text. */
-	protected String m_Markdown;
+  /** the markdown text. */
+  protected String m_Markdown;
 
-	/** for rendering the markdown. */
-	protected JEditorPane m_PaneView;
+  /** for rendering the markdown. */
+  protected JEditorPane m_PaneView;
 
-	/**
-	 * Initializes the members.
-	 */
-	@Override
-	protected void initialize() {
-		super.initialize();
+  /**
+   * Initializes the members.
+   */
+  @Override
+  protected void initialize() {
+    super.initialize();
 
-		m_Processor = new MarkdownProcessor();
-		m_Markdown  = "";
-	}
+    this.m_Processor = new MarkdownProcessor();
+    this.m_Markdown = "";
+  }
 
-	/**
-	 * Initializes the widgets.
-	 */
-	@Override
-	protected void initGUI() {
-		super.initGUI();
+  /**
+   * Initializes the widgets.
+   */
+  @Override
+  protected void initGUI() {
+    super.initGUI();
 
-		setLayout(new BorderLayout());
+    this.setLayout(new BorderLayout());
 
-		m_PaneView = new JEditorPane();
-		m_PaneView.setEditable(false);
-		m_PaneView.setContentType("text/html");
-		add(new BaseScrollPane(m_PaneView), BorderLayout.CENTER);
-	}
+    this.m_PaneView = new JEditorPane();
+    this.m_PaneView.setEditable(false);
+    this.m_PaneView.setContentType("text/html");
+    this.add(new BaseScrollPane(this.m_PaneView), BorderLayout.CENTER);
+  }
 
-	/**
-	 * Sets the Markdown text and renders it.
-	 *
-	 * @param value	the markdown text
-	 */
-	public void setText(String value) {
-		String	html;
+  /**
+   * Sets the Markdown text and renders it.
+   *
+   * @param value
+   *          the markdown text
+   */
+  public void setText(String value) {
+    String html;
 
-		if (value == null)
-			value = "";
-		m_Markdown = value;
+    if (value == null) {
+      value = "";
+    }
+    this.m_Markdown = value;
 
-		html = m_Processor.markdown(m_Markdown);
-		try {
-			m_PaneView.setText("<html>" + html + "</html>");
-			m_PaneView.setCaretPosition(0);
-		}
-		catch (Exception e) {
-			System.err.println("Failed to update preview!");
-			e.printStackTrace();
-		}
-	}
+    html = this.m_Processor.markdown(this.m_Markdown);
+    try {
+      this.m_PaneView.setText("<html>" + html + "</html>");
+      this.m_PaneView.setCaretPosition(0);
+    } catch (Exception e) {
+      System.err.println("Failed to update preview!");
+      e.printStackTrace();
+    }
+  }
 
-	/**
-	 * Returns the Markdown text.
-	 *
-	 * @return		the markdown text
-	 */
-	public String getText() {
-		return m_Markdown;
-	}
+  /**
+   * Returns the Markdown text.
+   *
+   * @return the markdown text
+   */
+  public String getText() {
+    return this.m_Markdown;
+  }
 
-	/**
-	 * Sets whether the text pane is editable or not.
-	 *
-	 * @param value if true the text pane is editable
-	 */
-	public void setEditable(boolean value) {
-		m_PaneView.setEditable(value);
-	}
+  /**
+   * Sets whether the text pane is editable or not.
+   *
+   * @param value
+   *          if true the text pane is editable
+   */
+  public void setEditable(final boolean value) {
+    this.m_PaneView.setEditable(value);
+  }
 
-	/**
-	 * Returns whether the text pane is editable or not.
-	 *
-	 * @return true if the text pane is editable
-	 */
-	public boolean isEditable() {
-		return m_PaneView.isEditable();
-	}
+  /**
+   * Returns whether the text pane is editable or not.
+   *
+   * @return true if the text pane is editable
+   */
+  public boolean isEditable() {
+    return this.m_PaneView.isEditable();
+  }
 
-	/**
-	 * Returns the underlying document.
-	 *
-	 * @return		the document
-	 */
-	public Document getDocument() {
-		return m_PaneView.getDocument();
-	}
+  /**
+   * Returns the underlying document.
+   *
+   * @return the document
+   */
+  public Document getDocument() {
+    return this.m_PaneView.getDocument();
+  }
 
-	/**
-	 * Sets the position of the cursor.
-	 *
-	 * @param value	the position
-	 */
-	public void setCaretPosition(int value) {
-		m_PaneView.setCaretPosition(value);
-	}
+  /**
+   * Sets the position of the cursor.
+   *
+   * @param value
+   *          the position
+   */
+  public void setCaretPosition(final int value) {
+    this.m_PaneView.setCaretPosition(value);
+  }
 
-	/**
-	 * Returns the current position of the cursor.
-	 *
-	 * @return		the cursor position
-	 */
-	public int getCaretPosition() {
-		return m_PaneView.getCaretPosition();
-	}
+  /**
+   * Returns the current position of the cursor.
+   *
+   * @return the cursor position
+   */
+  public int getCaretPosition() {
+    return this.m_PaneView.getCaretPosition();
+  }
 
-	/**
-	 * Sets the position of the cursor at the end.
-	 */
-	public void setCaretPositionLast() {
-		setCaretPosition(getDocument().getLength());
-	}
+  /**
+   * Sets the position of the cursor at the end.
+   */
+  public void setCaretPositionLast() {
+    this.setCaretPosition(this.getDocument().getLength());
+  }
 
-	/**
-	 * For testing only.
-	 *
-	 * @param args	ignored
-	 */
-	public static void main(String[] args) {
-		MarkdownTextPane pane = new MarkdownTextPane();
-		pane.setText("# Markdown test\n\n* item 1\n* item 2\n\n## Other stuff\n*italic* __bold__");
-		JFrame frame = new JFrame("Markdown test");
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.getContentPane().setLayout(new BorderLayout());
-		frame.getContentPane().add(pane, BorderLayout.CENTER);
-		frame.setSize(600, 400);
-		frame.setLocationRelativeTo(null);
-		frame.setVisible(true);
-	}
+  /**
+   * For testing only.
+   *
+   * @param args
+   *          ignored
+   */
+  public static void main(final String[] args) {
+    MarkdownTextPane pane = new MarkdownTextPane();
+    pane.setText("# Markdown test\n\n* item 1\n* item 2\n\n## Other stuff\n*italic* __bold__");
+    JFrame frame = new JFrame("Markdown test");
+    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    frame.getContentPane().setLayout(new BorderLayout());
+    frame.getContentPane().add(pane, BorderLayout.CENTER);
+    frame.setSize(600, 400);
+    frame.setLocationRelativeTo(null);
+    frame.setVisible(true);
+  }
 }
