@@ -15,238 +15,260 @@
 
 package meka.classifiers.multilabel;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Random;
+import java.util.Vector;
+
 import meka.classifiers.multilabel.cc.CNode;
 import meka.classifiers.multilabel.cc.Trellis;
 import meka.core.A;
 import meka.core.OptionUtils;
 import meka.core.StatUtils;
-import weka.core.*;
+import weka.core.Instance;
+import weka.core.Instances;
+import weka.core.Option;
+import weka.core.RevisionUtils;
+import weka.core.TechnicalInformation;
 import weka.core.TechnicalInformation.Field;
 import weka.core.TechnicalInformation.Type;
 
-import java.util.*;
-
 /**
- * CDT.java - Conditional Dependency Trellis.
- * Like CDN, but with a trellis structure (like CT) rather than a fully connected network.
+ * CDT.java - Conditional Dependency Trellis. Like CDN, but with a trellis structure (like CT)
+ * rather than a fully connected network.
+ *
  * @see CDN
  * @see CT
- * @author 	Jesse Read
- * @version	January 2014
+ * @author Jesse Read
+ * @version January 2014
  */
 public class CDT extends CDN {
 
-	private static final long serialVersionUID = -1237783546336254364L;
+  private static final long serialVersionUID = -1237783546336254364L;
 
-	protected int m_Width = -1;
-	protected int m_Density = 1;
-	protected String m_DependencyMetric = "None";
+  protected int m_Width = -1;
+  protected int m_Density = 1;
+  protected String m_DependencyMetric = "None";
 
-	Trellis trel = null;
+  Trellis trel = null;
 
-	protected CNode nodes[] = null;
+  protected CNode nodes[] = null;
 
-	@Override
-	public void buildClassifier(Instances D) throws Exception {
-	  	testCapabilities(D);
-	  	
-		int L = D.classIndex();
-		int d = D.numAttributes()-L;
-		m_R = new Random(getSeed());
-		int width = m_Width;
+  @Override
+  public void buildClassifier(final Instances D) throws Exception {
+    this.testCapabilities(D);
 
-		if (m_Width < 0)
-			width = (int)Math.sqrt(L);
-		else if (m_Width == 0) {
-			width = L;
-		}
+    int L = D.classIndex();
+    int d = D.numAttributes() - L;
+    this.m_R = new Random(this.getSeed());
+    int width = this.m_Width;
 
-		nodes = new CNode[L];
-		/*
-		 * Make the Trellis.
-		 */
-		if (getDebug())
-			System.out.println("Make Trellis of width "+m_Width);
-		int indices[] = A.make_sequence(L);
-		A.shuffle(indices, new Random(getSeed()));
-		trel = new Trellis(indices, width, m_Density);
-		if (getDebug())
-			System.out.println("==>\n"+trel.toString());
+    if (this.m_Width < 0) {
+      width = (int) Math.sqrt(L);
+    } else if (this.m_Width == 0) {
+      width = L;
+    }
 
-		/* Rearrange the Trellis */
-		if (!m_DependencyMetric.equals("None"))
-			trel = CT.orderTrellis(trel,StatUtils.margDepMatrix(D,m_DependencyMetric),m_R);
+    this.nodes = new CNode[L];
+    /*
+     * Make the Trellis.
+     */
+    if (this.getDebug()) {
+      System.out.println("Make Trellis of width " + this.m_Width);
+    }
+    int indices[] = A.make_sequence(L);
+    A.shuffle(indices, new Random(this.getSeed()));
+    this.trel = new Trellis(indices, width, this.m_Density);
+    if (this.getDebug()) {
+      System.out.println("==>\n" + this.trel.toString());
+    }
 
-		/*
-		 * Build Trellis
-		 */
-		if (getDebug())
-			System.out.println("Build Trellis");
+    /* Rearrange the Trellis */
+    if (!this.m_DependencyMetric.equals("None")) {
+      this.trel = CT.orderTrellis(this.trel, StatUtils.margDepMatrix(D, this.m_DependencyMetric), this.m_R);
+    }
 
-		if (getDebug())
-			System.out.println("nodes: "+Arrays.toString(trel.indices));
+    /*
+     * Build Trellis
+     */
+    if (this.getDebug()) {
+      System.out.println("Build Trellis");
+    }
 
-		for(int j = 0; j < L; j++) {
-			int jv = trel.indices[j];
-			if (getDebug()) {
-				System.out.println("Build Node h_"+jv+"] : P(y_"+jv+" | x_[1:d], y_"+Arrays.toString(trel.getNeighbours(j))+")");
-			}
-			nodes[jv] = new CNode(jv, null, trel.getNeighbours(j));
-			nodes[jv].build(D,m_Classifier);
-		}
+    if (this.getDebug()) {
+      System.out.println("nodes: " + Arrays.toString(this.trel.indices));
+    }
 
-	}
+    for (int j = 0; j < L; j++) {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Thread has been interrupted.");
+      }
+      int jv = this.trel.indices[j];
+      if (this.getDebug()) {
+        System.out.println("Build Node h_" + jv + "] : P(y_" + jv + " | x_[1:d], y_" + Arrays.toString(this.trel.getNeighbours(j)) + ")");
+      }
+      this.nodes[jv] = new CNode(jv, null, this.trel.getNeighbours(j));
+      this.nodes[jv].build(D, this.m_Classifier);
+    }
 
-	@Override
-	public double[] distributionForInstance(Instance x) throws Exception {
+  }
 
-		int L = x.classIndex();
-		double y[] = new double[L];			// for sampling
-		double y_marg[] = new double[L];	// for collectiing marginal
+  @Override
+  public double[] distributionForInstance(final Instance x) throws Exception {
 
-		int sequence[] = A.make_sequence(L);
+    int L = x.classIndex();
+    double y[] = new double[L]; // for sampling
+    double y_marg[] = new double[L]; // for collectiing marginal
 
-		double likelihood[] = new double[L];
+    int sequence[] = A.make_sequence(L);
 
-		for(int i = 0; i < I; i++) {
-			Collections.shuffle(Arrays.asList(sequence));
-			for(int j : sequence) {
-				// sample
-				y[j] = nodes[j].sample(x,y,m_R);
-				// collect marginals
-				if (i > (I - I_c)) {
-					y_marg[j] += y[j];
-				}
-				// else still burning in
-			}
-		}
-		// finish, calculate marginals
-		for(int j = 0; j < L; j++) {
-			y_marg[j] /= I_c;
-		}
+    double likelihood[] = new double[L];
 
-		return y_marg;
-	}
+    for (int i = 0; i < this.I; i++) {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Thread has been interrupted.");
+      }
+      Collections.shuffle(Arrays.asList(sequence));
+      for (int j : sequence) {
+        if (Thread.currentThread().isInterrupted()) {
+          throw new InterruptedException("Thread has been interrupted.");
+        }
+        // sample
+        y[j] = this.nodes[j].sample(x, y, this.m_R);
+        // collect marginals
+        if (i > (this.I - this.I_c)) {
+          y_marg[j] += y[j];
+        }
+        // else still burning in
+      }
+    }
+    // finish, calculate marginals
+    for (int j = 0; j < L; j++) {
+      y_marg[j] /= this.I_c;
+    }
 
-	/* NOTE: these options in common with CT */
+    return y_marg;
+  }
 
-	@Override
-	public Enumeration listOptions() {
-		Vector result = new Vector();
-		result.addElement(new Option("\t"+widthTipText(), "H", 1, "-H <value>"));
-		result.addElement(new Option("\t"+densityTipText(), "L", 1, "-L <value>"));
-		result.addElement(new Option("\t"+dependencyMetricTipText(), "X", 1, "-X <value>"));
-		OptionUtils.add(result, super.listOptions());
-		return OptionUtils.toEnumeration(result);
-	}
+  /* NOTE: these options in common with CT */
 
-	@Override
-	public void setOptions(String[] options) throws Exception {
-		setWidth(OptionUtils.parse(options, 'H', -1));
-		setDensity(OptionUtils.parse(options, 'L', 1));
-		setDependencyMetric(OptionUtils.parse(options, 'X', "None"));
-		super.setOptions(options);
-	}
+  @Override
+  public Enumeration listOptions() {
+    Vector result = new Vector();
+    result.addElement(new Option("\t" + this.widthTipText(), "H", 1, "-H <value>"));
+    result.addElement(new Option("\t" + this.densityTipText(), "L", 1, "-L <value>"));
+    result.addElement(new Option("\t" + this.dependencyMetricTipText(), "X", 1, "-X <value>"));
+    OptionUtils.add(result, super.listOptions());
+    return OptionUtils.toEnumeration(result);
+  }
 
-	@Override
-	public String [] getOptions() {
-		List<String> result = new ArrayList<>();
-		OptionUtils.add(result, 'H', getWidth());
-		OptionUtils.add(result, 'L', getDensity());
-		OptionUtils.add(result, 'X', getDependencyMetric());
-		OptionUtils.add(result, super.getOptions());
-		return OptionUtils.toArray(result);
-	}
+  @Override
+  public void setOptions(final String[] options) throws Exception {
+    this.setWidth(OptionUtils.parse(options, 'H', -1));
+    this.setDensity(OptionUtils.parse(options, 'L', 1));
+    this.setDependencyMetric(OptionUtils.parse(options, 'X', "None"));
+    super.setOptions(options);
+  }
 
-	/** 
-	 * GetDensity - Get the neighbourhood density (number of neighbours for each node).
-	 */
-	public int getDensity() {
-		return m_Density;
-	}
+  @Override
+  public String[] getOptions() {
+    List<String> result = new ArrayList<>();
+    OptionUtils.add(result, 'H', this.getWidth());
+    OptionUtils.add(result, 'L', this.getDensity());
+    OptionUtils.add(result, 'X', this.getDependencyMetric());
+    OptionUtils.add(result, super.getOptions());
+    return OptionUtils.toArray(result);
+  }
 
-	/** 
-	 * SetDensity - Sets the neighbourhood density (number of neighbours for each node).
-	 */
-	public void setDensity(int c) {
-		m_Density = c;
-	}
+  /**
+   * GetDensity - Get the neighbourhood density (number of neighbours for each node).
+   */
+  public int getDensity() {
+    return this.m_Density;
+  }
 
-	public String densityTipText() {
-		return "Determines the neighbourhood density (the number of neighbours for each node in the trellis).";
-	}
+  /**
+   * SetDensity - Sets the neighbourhood density (number of neighbours for each node).
+   */
+  public void setDensity(final int c) {
+    this.m_Density = c;
+  }
 
-	/** 
-	 * GetH - Get the trellis width.
-	 */
-	public int getWidth() {
-		return m_Width;
-	}
+  public String densityTipText() {
+    return "Determines the neighbourhood density (the number of neighbours for each node in the trellis).";
+  }
 
-	/** 
-	 * SetH - Sets the trellis width.
-	 */
-	public void setWidth(int h) {
-		m_Width = h;
-	}
+  /**
+   * GetH - Get the trellis width.
+   */
+  public int getWidth() {
+    return this.m_Width;
+  }
 
-	public String widthTipText() {
-		return "Determines the width of the trellis (use 0 for chain; use -1 for a square trellis, i.e., width of sqrt(number of labels)).";
-	}
+  /**
+   * SetH - Sets the trellis width.
+   */
+  public void setWidth(final int h) {
+    this.m_Width = h;
+  }
 
-	/** 
-	 * GetDependency - Get the type of depependency to use in rearranging the trellis (None by default)
-	 */
-	public String getDependencyMetric() {
-		return m_DependencyMetric;
-	}
+  public String widthTipText() {
+    return "Determines the width of the trellis (use 0 for chain; use -1 for a square trellis, i.e., width of sqrt(number of labels)).";
+  }
 
-	/** 
-	 * SetDependency - Sets the type of depependency to use in rearranging the trellis (None by default)
-	 */
-	public void setDependencyMetric(String m) {
-		m_DependencyMetric = m;
-	}
+  /**
+   * GetDependency - Get the type of depependency to use in rearranging the trellis (None by default)
+   */
+  public String getDependencyMetric() {
+    return this.m_DependencyMetric;
+  }
 
-	public String dependencyMetricTipText() {
-		return "The dependency heuristic to use in rearranging the trellis (None by default).";
-	}
+  /**
+   * SetDependency - Sets the type of depependency to use in rearranging the trellis (None by default)
+   */
+  public void setDependencyMetric(final String m) {
+    this.m_DependencyMetric = m;
+  }
 
-	public static void main(String args[]) {
-		ProblemTransformationMethod.evaluation(new CDT(), args);
-	}
+  public String dependencyMetricTipText() {
+    return "The dependency heuristic to use in rearranging the trellis (None by default).";
+  }
 
-	/**
-	 * Description to display in the GUI.
-	 * 
-	 * @return		the description
-	 */
-	@Override
-	public String globalInfo() {
-		return 
-				"A Conditional Dependency Trellis. Like CDN, but with a trellis structure (like CT) rather than a fully connected network."
-				+ "For more information see:\n"
-				+ getTechnicalInformation().toString();
-	}
+  public static void main(final String args[]) {
+    ProblemTransformationMethod.evaluation(new CDT(), args);
+  }
 
-	@Override
-	public TechnicalInformation getTechnicalInformation() {
-		TechnicalInformation	result;
+  /**
+   * Description to display in the GUI.
+   *
+   * @return the description
+   */
+  @Override
+  public String globalInfo() {
+    return "A Conditional Dependency Trellis. Like CDN, but with a trellis structure (like CT) rather than a fully connected network." + "For more information see:\n"
+        + this.getTechnicalInformation().toString();
+  }
 
-		result = new TechnicalInformation(Type.ARTICLE);
-		result.setValue(Field.AUTHOR, "Yuhong Guoand and Suicheng Gu");
-		result.setValue(Field.TITLE, "Multi-Label Classification Using Conditional Dependency Networks");
-		result.setValue(Field.BOOKTITLE, "IJCAI '11");
-		result.setValue(Field.YEAR, "2011");
+  @Override
+  public TechnicalInformation getTechnicalInformation() {
+    TechnicalInformation result;
 
-		result.add(new CT().getTechnicalInformation());
+    result = new TechnicalInformation(Type.ARTICLE);
+    result.setValue(Field.AUTHOR, "Yuhong Guoand and Suicheng Gu");
+    result.setValue(Field.TITLE, "Multi-Label Classification Using Conditional Dependency Networks");
+    result.setValue(Field.BOOKTITLE, "IJCAI '11");
+    result.setValue(Field.YEAR, "2011");
 
-		return result;
-	}
+    result.add(new CT().getTechnicalInformation());
 
-	@Override
-	public String getRevision() {
-	    return RevisionUtils.extract("$Revision: 9117 $");
-	}
+    return result;
+  }
+
+  @Override
+  public String getRevision() {
+    return RevisionUtils.extract("$Revision: 9117 $");
+  }
 }
-

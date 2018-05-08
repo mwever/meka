@@ -18,130 +18,147 @@ package meka.classifiers.multilabel.meta;
 import meka.classifiers.multilabel.BR;
 import meka.classifiers.multilabel.ProblemTransformationMethod;
 import weka.classifiers.AbstractClassifier;
-import weka.core.*;
+import weka.core.Attribute;
+import weka.core.FastVector;
+import weka.core.Instance;
+import weka.core.Instances;
+import weka.core.RevisionUtils;
+import weka.core.TechnicalInformation;
 import weka.core.TechnicalInformation.Field;
 import weka.core.TechnicalInformation.Type;
+import weka.core.TechnicalInformationHandler;
 
 /**
- * MBR.java - Meta BR: BR stacked with feature outputs into another BR.
- * Described in: Godbole and Sarawagi, <i>Discriminative Methods for Multi-labeled Classification</i>. 
- * 
- * @version	June 2009
- * @author 	Jesse Read (jmr30@cs.waikato.ac.nz)
+ * MBR.java - Meta BR: BR stacked with feature outputs into another BR. Described in: Godbole and
+ * Sarawagi, <i>Discriminative Methods for Multi-labeled Classification</i>.
+ *
+ * @version June 2009
+ * @author Jesse Read (jmr30@cs.waikato.ac.nz)
  */
 public class MBR extends ProblemTransformationMethod implements TechnicalInformationHandler {
 
-	/** for serialization. */
-	private static final long serialVersionUID = 865889198021748917L;
-	
-	protected BR m_BASE = null;
-	protected BR m_META = null;
+  /** for serialization. */
+  private static final long serialVersionUID = 865889198021748917L;
 
-	public MBR() {
-		// default classifier for GUI
-		this.m_Classifier = new BR();
-	}
+  protected BR m_BASE = null;
+  protected BR m_META = null;
 
-	/**
-	 * Description to display in the GUI.
-	 * 
-	 * @return		the description
-	 */
-	@Override
-	public String globalInfo() {
-		return "BR stacked with feature outputs.\nFor more information see:\n" + getTechnicalInformation().toString();
-	}
+  public MBR() {
+    // default classifier for GUI
+    this.m_Classifier = new BR();
+  }
 
-	@Override
-	protected String defaultClassifierString() {
-		return BR.class.getName();
-	}
+  /**
+   * Description to display in the GUI.
+   *
+   * @return the description
+   */
+  @Override
+  public String globalInfo() {
+    return "BR stacked with feature outputs.\nFor more information see:\n" + this.getTechnicalInformation().toString();
+  }
 
-	@Override
-	public TechnicalInformation getTechnicalInformation() {
-		TechnicalInformation	result;
-		
-		result = new TechnicalInformation(Type.INPROCEEDINGS);
-		result.setValue(Field.AUTHOR, "Shantanu Godbole, Sunita Sarawagi");
-		result.setValue(Field.TITLE, "Discriminative Methods for Multi-labeled Classification");
-		result.setValue(Field.BOOKTITLE, "Advances in Knowledge Discovery and Data Mining");
-		result.setValue(Field.YEAR, "2004");
-		result.setValue(Field.PAGES, "22-30");
-		result.setValue(Field.SERIES, "LNCS");
-		
-		return result;
-	}
+  @Override
+  protected String defaultClassifierString() {
+    return BR.class.getName();
+  }
 
+  @Override
+  public TechnicalInformation getTechnicalInformation() {
+    TechnicalInformation result;
 
-	@Override
-	public void buildClassifier(Instances data) throws Exception {
-	  	testCapabilities(data);
-	  	
-		int c = data.classIndex();
+    result = new TechnicalInformation(Type.INPROCEEDINGS);
+    result.setValue(Field.AUTHOR, "Shantanu Godbole, Sunita Sarawagi");
+    result.setValue(Field.TITLE, "Discriminative Methods for Multi-labeled Classification");
+    result.setValue(Field.BOOKTITLE, "Advances in Knowledge Discovery and Data Mining");
+    result.setValue(Field.YEAR, "2004");
+    result.setValue(Field.PAGES, "22-30");
+    result.setValue(Field.SERIES, "LNCS");
 
-		// Base BR
+    return result;
+  }
 
-		if (getDebug()) System.out.println("Build BR Base ("+c+" models)");
-		m_BASE = (BR)AbstractClassifier.forName(getClassifier().getClass().getName(),((AbstractClassifier)getClassifier()).getOptions());
-		m_BASE.buildClassifier(data);
+  @Override
+  public void buildClassifier(final Instances data) throws Exception {
+    this.testCapabilities(data);
 
-		// Meta BR
+    int c = data.classIndex();
 
-		if (getDebug()) System.out.println("Prepare Meta data           ");
-		Instances meta_data = new Instances(data);
+    // Base BR
 
-		FastVector BinaryClass = new FastVector(c);
-		BinaryClass.addElement("0");
-		BinaryClass.addElement("1");
+    if (this.getDebug()) {
+      System.out.println("Build BR Base (" + c + " models)");
+    }
+    this.m_BASE = (BR) AbstractClassifier.forName(this.getClassifier().getClass().getName(), ((AbstractClassifier) this.getClassifier()).getOptions());
+    this.m_BASE.buildClassifier(data);
 
-		for(int i = 0; i < c; i++) {
-			meta_data.insertAttributeAt(new Attribute("metaclass"+i,BinaryClass),c);
-		}
+    // Meta BR
 
-		for(int i = 0; i < data.numInstances(); i++) {
-			double cfn[] = m_BASE.distributionForInstance(data.instance(i));
-			for(int a = 0; a < cfn.length; a++) {
-				meta_data.instance(i).setValue(a+c,cfn[a]);
-			}
-		}
+    if (this.getDebug()) {
+      System.out.println("Prepare Meta data           ");
+    }
+    Instances meta_data = new Instances(data);
 
-		meta_data.setClassIndex(c);
-		m_InstancesTemplate = new Instances(meta_data, 0);
+    FastVector BinaryClass = new FastVector(c);
+    BinaryClass.addElement("0");
+    BinaryClass.addElement("1");
 
-		if (getDebug()) System.out.println("Build BR Meta ("+c+" models)");
+    for (int i = 0; i < c; i++) {
+      meta_data.insertAttributeAt(new Attribute("metaclass" + i, BinaryClass), c);
+    }
 
-		m_META = (BR)AbstractClassifier.forName(getClassifier().getClass().getName(),((AbstractClassifier)getClassifier()).getOptions());
-		m_META.buildClassifier(meta_data);
-	}
+    for (int i = 0; i < data.numInstances(); i++) {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Thread has been interrupted.");
+      }
+      double cfn[] = this.m_BASE.distributionForInstance(data.instance(i));
+      for (int a = 0; a < cfn.length; a++) {
+        meta_data.instance(i).setValue(a + c, cfn[a]);
+      }
+    }
 
-	@Override
-	public double[] distributionForInstance(Instance instance) throws Exception {
+    meta_data.setClassIndex(c);
+    this.m_InstancesTemplate = new Instances(meta_data, 0);
 
-		int c = instance.classIndex();
+    if (this.getDebug()) {
+      System.out.println("Build BR Meta (" + c + " models)");
+    }
 
-		double result[] = m_BASE.distributionForInstance(instance);
+    this.m_META = (BR) AbstractClassifier.forName(this.getClassifier().getClass().getName(), ((AbstractClassifier) this.getClassifier()).getOptions());
+    this.m_META.buildClassifier(meta_data);
+  }
 
-		instance.setDataset(null);
+  @Override
+  public double[] distributionForInstance(final Instance instance) throws Exception {
 
-		for (int i = 0; i < c; i++) {
-			instance.insertAttributeAt(c);
-		}
+    int c = instance.classIndex();
 
-		instance.setDataset(m_InstancesTemplate);
+    double result[] = this.m_BASE.distributionForInstance(instance);
 
-		for (int i = 0; i < c; i++) {
-			instance.setValue(c+i,result[i]);
-		}
+    instance.setDataset(null);
 
-		return m_META.distributionForInstance(instance);
-	}
+    for (int i = 0; i < c; i++) {
+      instance.insertAttributeAt(c);
+    }
 
-	@Override
-	public String getRevision() {
-	    return RevisionUtils.extract("$Revision: 9117 $");
-	}
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException("Thread has been interrupted.");
+    }
+    instance.setDataset(this.m_InstancesTemplate);
 
-	public static void main(String args[]) {
-		ProblemTransformationMethod.evaluation(new MBR(), args);
-	}
+    for (int i = 0; i < c; i++) {
+      instance.setValue(c + i, result[i]);
+    }
+
+    return this.m_META.distributionForInstance(instance);
+  }
+
+  @Override
+  public String getRevision() {
+    return RevisionUtils.extract("$Revision: 9117 $");
+  }
+
+  public static void main(final String args[]) {
+    ProblemTransformationMethod.evaluation(new MBR(), args);
+  }
 }

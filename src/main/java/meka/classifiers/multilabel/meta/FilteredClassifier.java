@@ -20,6 +20,8 @@
 
 package meka.classifiers.multilabel.meta;
 
+import java.util.Random;
+
 import meka.classifiers.multilabel.BR;
 import meka.classifiers.multilabel.MultiLabelClassifier;
 import meka.classifiers.multilabel.ProblemTransformationMethod;
@@ -33,149 +35,155 @@ import weka.core.WeightedInstancesHandler;
 import weka.filters.AllFilter;
 import weka.filters.Filter;
 
-import java.util.Random;
-
 /**
  * Allows the application of a filter in conjunction with a multi-label classifier.
  *
  * @author FracPete (fracpete at waikato dot ac dot nz)
  * @version $Revision$
  */
-public class FilteredClassifier
-	extends weka.classifiers.meta.FilteredClassifier
-	implements MultiLabelClassifier {
+public class FilteredClassifier extends weka.classifiers.meta.FilteredClassifier implements MultiLabelClassifier {
 
-	private static final long serialVersionUID = 4466454723202805056L;
+  private static final long serialVersionUID = 4466454723202805056L;
 
-	/**
-	 * Default constructor.
-	 *
-	 * Turns off check for modified class attribute.
-	 */
-	public FilteredClassifier() {
-		super();
-		setDoNotCheckForModifiedClassAttribute(true);
-		m_Classifier = new BR();
-		m_Filter = new AllFilter();
-	}
+  /**
+   * Default constructor.
+   *
+   * Turns off check for modified class attribute.
+   */
+  public FilteredClassifier() {
+    super();
+    this.setDoNotCheckForModifiedClassAttribute(true);
+    this.m_Classifier = new BR();
+    this.m_Filter = new AllFilter();
+  }
 
-	/**
-	 * String describing default classifier.
-	 */
-	protected String defaultClassifierString() {
-		return BR.class.getName();
-	}
+  /**
+   * String describing default classifier.
+   */
+  @Override
+  protected String defaultClassifierString() {
+    return BR.class.getName();
+  }
 
-	/**
-	 * Set the base learner.
-	 *
-	 * @param newClassifier the classifier to use.
-	 */
-	@Override
-	public void setClassifier(Classifier newClassifier) {
-		if (!(newClassifier instanceof MultiLabelClassifier))
-			throw new IllegalArgumentException("Classifier must be a " + MultiLabelClassifier.class.getName() + "!");
-		super.setClassifier(newClassifier);
-	}
+  /**
+   * Set the base learner.
+   *
+   * @param newClassifier
+   *          the classifier to use.
+   */
+  @Override
+  public void setClassifier(final Classifier newClassifier) {
+    if (!(newClassifier instanceof MultiLabelClassifier)) {
+      throw new IllegalArgumentException("Classifier must be a " + MultiLabelClassifier.class.getName() + "!");
+    }
+    super.setClassifier(newClassifier);
+  }
 
-	/**
-	 * TestCapabilities.
-	 * Make sure the training data is suitable.
-	 * @param D	the data
-	 */
-	public void testCapabilities(Instances D) throws Exception {
-		// get the classifier's capabilities, enable all class attributes and do the usual test
-		Capabilities cap = getCapabilities();
-		cap.enableAllClasses();
-		// get the capabilities again, test class attributes individually
-		int L = D.classIndex();
-		for(int j = 0; j < L; j++) {
-			Attribute c = D.attribute(j);
-			cap.testWithFail(c,true);
-		}
-	}
+  /**
+   * TestCapabilities. Make sure the training data is suitable.
+   * 
+   * @param D
+   *          the data
+   */
+  public void testCapabilities(final Instances D) throws Exception {
+    // get the classifier's capabilities, enable all class attributes and do the usual test
+    Capabilities cap = this.getCapabilities();
+    cap.enableAllClasses();
+    // get the capabilities again, test class attributes individually
+    int L = D.classIndex();
+    for (int j = 0; j < L; j++) {
+      Attribute c = D.attribute(j);
+      cap.testWithFail(c, true);
+    }
+  }
 
-	/**
-	 * Sets up the filter and runs checks.
-	 *
-	 * @return filtered data
-	 */
-	protected Instances setUp(Instances data) throws Exception {
-		String      relName;
-		String      classAtt;
+  /**
+   * Sets up the filter and runs checks.
+   *
+   * @return filtered data
+   */
+  protected Instances setUp(Instances data) throws Exception {
+    String relName;
+    String classAtt;
 
-		relName  = data.relationName();
-		classAtt = data.classAttribute().name();
+    relName = data.relationName();
+    classAtt = data.classAttribute().name();
 
-		if (m_Classifier == null)
-			throw new Exception("No base classifiers have been set!");
+    if (this.m_Classifier == null) {
+      throw new Exception("No base classifiers have been set!");
+    }
 
-		getCapabilities().testWithFail(data);
+    this.getCapabilities().testWithFail(data);
 
-		// get fresh instances object
-		data = new Instances(data);
+    // get fresh instances object
+    data = new Instances(data);
 
-		Attribute classAttribute = (Attribute)data.classAttribute().copy();
-		m_Filter.setInputFormat(data); // filter capabilities are checked here
-		data = Filter.useFilter(data, m_Filter);
-		if ((!classAttribute.equals(data.classAttribute())) && (!m_DoNotCheckForModifiedClassAttribute))
-			throw new IllegalArgumentException("Cannot proceed: " + getFilterSpec() + " has modified the class attribute!");
+    Attribute classAttribute = (Attribute) data.classAttribute().copy();
+    this.m_Filter.setInputFormat(data); // filter capabilities are checked here
+    data = Filter.useFilter(data, this.m_Filter);
+    if ((!classAttribute.equals(data.classAttribute())) && (!this.m_DoNotCheckForModifiedClassAttribute)) {
+      throw new IllegalArgumentException("Cannot proceed: " + this.getFilterSpec() + " has modified the class attribute!");
+    }
 
-		data.setRelationName(relName);
-		data.setClassIndex(data.attribute(classAtt).index());
+    data.setRelationName(relName);
+    data.setClassIndex(data.attribute(classAtt).index());
 
-		// can classifier handle the data?
-		testCapabilities(data);
+    // can classifier handle the data?
+    this.testCapabilities(data);
 
-		m_FilteredInstances = data.stringFreeStructure();
+    this.m_FilteredInstances = data.stringFreeStructure();
 
-		return data;
-	}
+    return data;
+  }
 
   /**
    * Build the classifier on the filtered data.
    *
-   * @param data the training data
-   * @throws Exception if the classifier could not be built successfully
+   * @param data
+   *          the training data
+   * @throws Exception
+   *           if the classifier could not be built successfully
    */
+  @Override
   public void buildClassifier(Instances data) throws Exception {
 
-    if (m_Classifier == null) {
+    if (this.m_Classifier == null) {
       throw new Exception("No base classifier has been set!");
     }
 
-    getCapabilities().testWithFail(data);
+    this.getCapabilities().testWithFail(data);
 
-    Random r = (data.numInstances() > 0) ? data.getRandomNumberGenerator(getSeed()) : new Random(getSeed());
-    data = setUp(data, r);
-    if (!data.allInstanceWeightsIdentical() && !(m_Classifier instanceof WeightedInstancesHandler)) {
+    Random r = (data.numInstances() > 0) ? data.getRandomNumberGenerator(this.getSeed()) : new Random(this.getSeed());
+    data = this.setUp(data, r);
+    if (!data.allInstanceWeightsIdentical() && !(this.m_Classifier instanceof WeightedInstancesHandler)) {
       data = data.resampleWithWeights(r); // The filter may have assigned weights.
     }
-    if (!data.allAttributeWeightsIdentical() && !(m_Classifier instanceof WeightedAttributesHandler)) {
-      data = resampleAttributes(data, false, r);
+    if (!data.allAttributeWeightsIdentical() && !(this.m_Classifier instanceof WeightedAttributesHandler)) {
+      data = this.resampleAttributes(data, false, r);
     }
 
-    if (m_Classifier instanceof Randomizable) {
-      ((Randomizable)m_Classifier).setSeed(r.nextInt());
+    if (this.m_Classifier instanceof Randomizable) {
+      ((Randomizable) this.m_Classifier).setSeed(r.nextInt());
     }
 
-    m_Classifier.buildClassifier(data);
+    this.m_Classifier.buildClassifier(data);
   }
 
-	/**
-	 * Returns a string representation of the model.
-	 *
-	 * @return the model
-	 */
-	@Override
-	public String getModel() {
-		if (m_Classifier instanceof MultiLabelClassifier)
-			return ((MultiLabelClassifier) m_Classifier).getModel();
-		else
-			return toString();
-	}
+  /**
+   * Returns a string representation of the model.
+   *
+   * @return the model
+   */
+  @Override
+  public String getModel() {
+    if (this.m_Classifier instanceof MultiLabelClassifier) {
+      return ((MultiLabelClassifier) this.m_Classifier).getModel();
+    } else {
+      return this.toString();
+    }
+  }
 
-	public static void main(String args[]) {
-		ProblemTransformationMethod.evaluation(new FilteredClassifier(), args);
-	}
+  public static void main(final String args[]) {
+    ProblemTransformationMethod.evaluation(new FilteredClassifier(), args);
+  }
 }

@@ -15,67 +15,83 @@
 
 package meka.classifiers.multilabel.meta;
 
+import java.util.Random;
+
 import meka.classifiers.multilabel.ProblemTransformationMethod;
 import weka.core.Instances;
 import weka.core.Randomizable;
 import weka.core.RevisionUtils;
 
-import java.util.Random;
-
 /**
- * BaggingMLdup.java - A version of BaggingML where Instances are duplicated instead of assigned higher weighs.
- * Duplicates Instances instead of assigning higher weights -- should work for methods that do not handle weights at all.
+ * BaggingMLdup.java - A version of BaggingML where Instances are duplicated instead of assigned
+ * higher weighs. Duplicates Instances instead of assigning higher weights -- should work for
+ * methods that do not handle weights at all.
+ *
  * @author Jesse Read (jmr30@cs.waikato.ac.nz)
  */
 public class BaggingMLdup extends MetaProblemTransformationMethod {
 
-	/** for serialization. */
-	private static final long serialVersionUID = -5606278379913020097L;
+  /** for serialization. */
+  private static final long serialVersionUID = -5606278379913020097L;
 
-	/**
-	 * Description to display in the GUI.
-	 * 
-	 * @return		the description
-	 */
-	@Override
-	public String globalInfo() {
-		return 
-				"Combining several multi-label classifiers using Bootstrap AGGregatING.\n"
-				+ "Duplicates Instances instead of assigning higher weights -- should work for methods that do not handle weights at all.";
-	}
-	
-	@Override
-	public void buildClassifier(Instances train) throws Exception {
-	  	testCapabilities(train);
-	  	
-		if (getDebug()) System.out.print("-: Models: ");
+  /**
+   * Description to display in the GUI.
+   *
+   * @return the description
+   */
+  @Override
+  public String globalInfo() {
+    return "Combining several multi-label classifiers using Bootstrap AGGregatING.\n"
+        + "Duplicates Instances instead of assigning higher weights -- should work for methods that do not handle weights at all.";
+  }
 
-		//m_Classifiers = (MultilabelClassifier[]) AbstractClassifier.makeCopies(m_Classifier, m_NumIterations);
-		m_Classifiers = ProblemTransformationMethod.makeCopies((ProblemTransformationMethod) m_Classifier, m_NumIterations);
+  @Override
+  public void buildClassifier(final Instances train) throws Exception {
+    this.testCapabilities(train);
 
-		for(int i = 0; i < m_NumIterations; i++) {
-			Random r = new Random(m_Seed+i);
-			Instances bag = new Instances(train,0);
-			if (m_Classifiers[i] instanceof Randomizable) ((Randomizable)m_Classifiers[i]).setSeed(m_Seed+i);
-			if(getDebug()) System.out.print(""+i+" ");
+    if (this.getDebug()) {
+      System.out.print("-: Models: ");
+    }
 
-			int bag_no = (m_BagSizePercent*train.numInstances()/100);
-			//System.out.println(" bag no: "+bag_no);
-			while(bag.numInstances() < bag_no) {
-				bag.add(train.instance(r.nextInt(train.numInstances())));
-			}
-			m_Classifiers[i].buildClassifier(bag);
-		}
-		if (getDebug()) System.out.println(":-");
-	}
+    // m_Classifiers = (MultilabelClassifier[]) AbstractClassifier.makeCopies(m_Classifier,
+    // m_NumIterations);
+    this.m_Classifiers = ProblemTransformationMethod.makeCopies((ProblemTransformationMethod) this.m_Classifier, this.m_NumIterations);
 
-	@Override
-	public String getRevision() {
-	    return RevisionUtils.extract("$Revision: 9117 $");
-	}
+    for (int i = 0; i < this.m_NumIterations; i++) {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Thread has been interrupted.");
+      }
+      Random r = new Random(this.m_Seed + i);
+      Instances bag = new Instances(train, 0);
+      if (this.m_Classifiers[i] instanceof Randomizable) {
+        ((Randomizable) this.m_Classifiers[i]).setSeed(this.m_Seed + i);
+      }
+      if (this.getDebug()) {
+        System.out.print("" + i + " ");
+      }
 
-	public static void main(String args[]) {
-		ProblemTransformationMethod.evaluation(new BaggingMLdup(), args);
-	}
+      int bag_no = (this.m_BagSizePercent * train.numInstances() / 100);
+      // System.out.println(" bag no: "+bag_no);
+      while (bag.numInstances() < bag_no) {
+        if (Thread.currentThread().isInterrupted()) {
+          throw new InterruptedException("Thread has been interrupted.");
+        }
+        bag.add(train.instance(r.nextInt(train.numInstances())));
+      }
+      this.m_Classifiers[i].buildClassifier(bag);
+    }
+    if (this.getDebug()) {
+      System.out.println(":-");
+    }
+  }
+
+  @Override
+  public String getRevision() {
+    return RevisionUtils.extract("$Revision: 9117 $");
+  }
+
+  public static void main(final String args[]) {
+    ProblemTransformationMethod.evaluation(new BaggingMLdup(), args);
+  }
 
 }

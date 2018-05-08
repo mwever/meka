@@ -24,51 +24,63 @@ import weka.core.RevisionUtils;
 
 /**
  * EnsembleML.java - Combines several multi-label classifiers in a simple-subset ensemble.
+ * 
  * @author Jesse Read (jmr30@cs.waikato.ac.nz)
  */
 
 public class EnsembleML extends MetaProblemTransformationMethod {
 
-	/** for serialization. */
-	private static final long serialVersionUID = 835659467275068411L;
+  /** for serialization. */
+  private static final long serialVersionUID = 835659467275068411L;
 
-	/**
-	 * Description to display in the GUI.
-	 * 
-	 * @return		the description
-	 */
-	@Override
-	public String globalInfo() {
-		return "Combining several multi-label classifiers in a simple-subset ensemble.";
-	}
+  /**
+   * Description to display in the GUI.
+   * 
+   * @return the description
+   */
+  @Override
+  public String globalInfo() {
+    return "Combining several multi-label classifiers in a simple-subset ensemble.";
+  }
 
-	@Override
-	public void buildClassifier(Instances train) throws Exception {
-	  	testCapabilities(train);
-	  	
-		if (getDebug()) System.out.print("-: Models: ");
+  @Override
+  public void buildClassifier(Instances train) throws Exception {
+    this.testCapabilities(train);
 
-		train = new Instances(train);
-		m_Classifiers = ProblemTransformationMethod.makeCopies((ProblemTransformationMethod) m_Classifier, m_NumIterations);
-		int sub_size = (train.numInstances()*m_BagSizePercent/100);
-		for(int i = 0; i < m_NumIterations; i++) {
-			if(getDebug()) System.out.print(""+i+" ");
-			if (m_Classifiers[i] instanceof Randomizable) ((Randomizable)m_Classifiers[i]).setSeed(i);
-			train.randomize(new Random(m_Seed+i));
-			Instances sub_train = new Instances(train,0,sub_size);
-			m_Classifiers[i].buildClassifier(sub_train);
-		}
+    if (this.getDebug()) {
+      System.out.print("-: Models: ");
+    }
 
-		if (getDebug()) System.out.println(":-");
-	}
+    train = new Instances(train);
+    this.m_Classifiers = ProblemTransformationMethod.makeCopies((ProblemTransformationMethod) this.m_Classifier, this.m_NumIterations);
+    int sub_size = (train.numInstances() * this.m_BagSizePercent / 100);
+    for (int i = 0; i < this.m_NumIterations; i++) {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Thread has been interrupted.");
+      }
+      if (this.getDebug()) {
+        System.out.print("" + i + " ");
+      }
+      if (this.m_Classifiers[i] instanceof Randomizable) {
+        ((Randomizable) this.m_Classifiers[i]).setSeed(i);
+      }
+      train.randomize(new Random(this.m_Seed + i));
+      Instances sub_train = new Instances(train, 0, sub_size);
+      this.m_Classifiers[i].buildClassifier(sub_train);
+    }
 
-	@Override
-	public String getRevision() {
-	    return RevisionUtils.extract("$Revision: 9117 $");
-	}
+    if (this.getDebug()) {
+      System.out.println(":-");
+    }
+  }
 
-	public static void main(String args[]) {
-		ProblemTransformationMethod.evaluation(new EnsembleML(), args);
-	}
+  @Override
+  public String getRevision() {
+    return RevisionUtils.extract("$Revision: 9117 $");
+  }
+
+  public static void main(final String args[]) {
+    ProblemTransformationMethod.evaluation(new EnsembleML(), args);
+  }
 
 }

@@ -18,134 +18,141 @@ package meka.classifiers.multilabel;
 import java.util.HashMap;
 import java.util.Map;
 
+import meka.core.MultiLabelDrawable;
+import meka.core.PSUtils;
+import weka.core.Drawable;
 import weka.core.Instance;
 import weka.core.Instances;
-import weka.core.Drawable;
 import weka.core.OptionHandler;
 import weka.core.RevisionUtils;
 
-import meka.core.MultiLabelDrawable;
-import meka.core.PSUtils;
-
 /**
- * LC.java - The LC (Label Combination) aka LP (Laber Powerset) Method.
- * Treats each label combination as a single class in a multi-class learning scheme. The set of possible values of each class is the powerset of labels.
- * This code was rewritten at some point.
- * See also <i>LP</i> from the <a href=http://mulan.sourceforge.net>MULAN</a> framework.
+ * LC.java - The LC (Label Combination) aka LP (Laber Powerset) Method. Treats each label
+ * combination as a single class in a multi-class learning scheme. The set of possible values of
+ * each class is the powerset of labels. This code was rewritten at some point. See also <i>LP</i>
+ * from the <a href=http://mulan.sourceforge.net>MULAN</a> framework.
+ * 
  * @version June 2014
- * @author 	Jesse Read
+ * @author Jesse Read
  */
 public class LC extends ProblemTransformationMethod implements OptionHandler, MultiLabelDrawable {
 
-	/** for serialization. */
-	private static final long serialVersionUID = -2726090581435923988L;
+  /** for serialization. */
+  private static final long serialVersionUID = -2726090581435923988L;
 
-	/**
-	 * Description to display in the GUI.
-	 * 
-	 * @return		the description
-	 */
-	@Override
-	public String globalInfo() {
-		return 
-				"LC aka LP (Laber Powerset) Method.\nTreats each label combination as a single class in a multi-class learning scheme. The set of possible values of each class is the powerset of labels.\n"
-				+ "See also LP from MULAN:\n"
-				+ "http://mulan.sourceforge.net";
-	}
+  /**
+   * Description to display in the GUI.
+   * 
+   * @return the description
+   */
+  @Override
+  public String globalInfo() {
+    return "LC aka LP (Laber Powerset) Method.\nTreats each label combination as a single class in a multi-class learning scheme. The set of possible values of each class is the powerset of labels.\n"
+        + "See also LP from MULAN:\n" + "http://mulan.sourceforge.net";
+  }
 
-	@Override
-	public void buildClassifier(Instances D) throws Exception {
-	  	testCapabilities(D);
-	  	
-		int L = D.classIndex();
+  @Override
+  public void buildClassifier(final Instances D) throws Exception {
+    this.testCapabilities(D);
 
-		// Transform Instances
-		if(getDebug()) System.out.print("Transforming Instances ...");
-		Instances D_ = PSUtils.LCTransformation(D,L);
-		m_InstancesTemplate = new Instances(D_,0);
+    int L = D.classIndex();
 
-		// Set Info ; Build Classifier
-		info = "K = "+m_InstancesTemplate.attribute(0).numValues() + ", N = "+D_.numInstances();
-		if(getDebug()) System.out.print("Building Classifier ("+info+"), ...");
-		m_Classifier.buildClassifier(D_);
-		if(getDebug()) System.out.println("Done");
-	}
+    // Transform Instances
+    if (this.getDebug()) {
+      System.out.print("Transforming Instances ...");
+    }
+    Instances D_ = PSUtils.LCTransformation(D, L);
+    this.m_InstancesTemplate = new Instances(D_, 0);
 
-	@Override
-	public double[] distributionForInstance(Instance x) throws Exception {
+    // Set Info ; Build Classifier
+    this.info = "K = " + this.m_InstancesTemplate.attribute(0).numValues() + ", N = " + D_.numInstances();
+    if (this.getDebug()) {
+      System.out.print("Building Classifier (" + this.info + "), ...");
+    }
+    this.m_Classifier.buildClassifier(D_);
+    if (this.getDebug()) {
+      System.out.println("Done");
+    }
+  }
 
-		int L = x.classIndex();
+  @Override
+  public double[] distributionForInstance(final Instance x) throws Exception {
 
-		//if there is only one class (as for e.g. in some hier. mtds) predict it
-		if(L == 1) return new double[]{1.0};
+    int L = x.classIndex();
 
-		Instance x_ = PSUtils.convertInstance(x,L,m_InstancesTemplate); //convertInstance(x,L);
-		x_.setDataset(m_InstancesTemplate);
+    // if there is only one class (as for e.g. in some hier. mtds) predict it
+    if (L == 1) {
+      return new double[] { 1.0 };
+    }
 
-		//Get a classification
-		double y[] = new double[x_.numClasses()];
+    Instance x_ = PSUtils.convertInstance(x, L, this.m_InstancesTemplate); // convertInstance(x,L);
+    x_.setDataset(this.m_InstancesTemplate);
 
-		y[(int)m_Classifier.classifyInstance(x_)] = 1.0;
+    // Get a classification
+    double y[] = new double[x_.numClasses()];
 
-		return PSUtils.convertDistribution(y,L,m_InstancesTemplate);
-	}
+    y[(int) this.m_Classifier.classifyInstance(x_)] = 1.0;
 
-	/**
-	 * Returns the type of graph representing
-	 * the object.
-	 *
-	 * @return the type of graph representing the object (label index as key)
-	 */
-	public Map<Integer,Integer> graphType() {
-		Map<Integer,Integer>	result;
+    return PSUtils.convertDistribution(y, L, this.m_InstancesTemplate);
+  }
 
-		result = new HashMap<Integer,Integer>();
+  /**
+   * Returns the type of graph representing the object.
+   *
+   * @return the type of graph representing the object (label index as key)
+   */
+  @Override
+  public Map<Integer, Integer> graphType() {
+    Map<Integer, Integer> result;
 
-		if (getClassifier() != null) {
-			if (getClassifier() instanceof Drawable) {
-				result.put(0, ((Drawable) getClassifier()).graphType());
-			}
-		}
+    result = new HashMap<>();
 
-		return result;
-	}
+    if (this.getClassifier() != null) {
+      if (this.getClassifier() instanceof Drawable) {
+        result.put(0, ((Drawable) this.getClassifier()).graphType());
+      }
+    }
 
-	/**
-	 * Returns a string that describes a graph representing
-	 * the object. The string should be in XMLBIF ver.
-	 * 0.3 format if the graph is a BayesNet, otherwise
-	 * it should be in dotty format.
-	 *
-	 * @return the graph described by a string (label index as key)
-	 * @throws Exception if the graph can't be computed
-	 */
-	public Map<Integer,String> graph() throws Exception {
-		Map<Integer,String>		result;
+    return result;
+  }
 
-		result = new HashMap<Integer,String>();
+  /**
+   * Returns a string that describes a graph representing the object. The string should be in XMLBIF
+   * ver. 0.3 format if the graph is a BayesNet, otherwise it should be in dotty format.
+   *
+   * @return the graph described by a string (label index as key)
+   * @throws Exception
+   *           if the graph can't be computed
+   */
+  @Override
+  public Map<Integer, String> graph() throws Exception {
+    Map<Integer, String> result;
 
-		if (getClassifier() != null) {
-			if (getClassifier() instanceof Drawable) {
-				result.put(0, ((Drawable) getClassifier()).graph());
-			}
-		}
+    result = new HashMap<>();
 
-		return result;
-	}
+    if (this.getClassifier() != null) {
+      if (this.getClassifier() instanceof Drawable) {
+        result.put(0, ((Drawable) this.getClassifier()).graph());
+      }
+    }
 
-	private String info = "";
+    return result;
+  }
 
-	public String toString() {
-		return info;
-	}
+  private String info = "";
 
-	@Override
-	public String getRevision() {
-		return RevisionUtils.extract("$Revision: 9117 $");
-	}
+  @Override
+  public String toString() {
+    return this.info;
+  }
 
-	public static void main(String args[]) {
-		ProblemTransformationMethod.evaluation(new LC(), args);
-	}
+  @Override
+  public String getRevision() {
+    return RevisionUtils.extract("$Revision: 9117 $");
+  }
+
+  public static void main(final String args[]) {
+    ProblemTransformationMethod.evaluation(new LC(), args);
+  }
 
 }

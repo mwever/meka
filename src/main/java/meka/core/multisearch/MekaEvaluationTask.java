@@ -20,6 +20,8 @@
 
 package meka.core.multisearch;
 
+import java.io.Serializable;
+
 import meka.classifiers.multilabel.Evaluation;
 import meka.classifiers.multilabel.MultiLabelClassifier;
 import meka.core.Result;
@@ -31,103 +33,98 @@ import weka.core.Instances;
 import weka.core.SetupGenerator;
 import weka.core.setupgenerator.Point;
 
-import java.io.Serializable;
-
 /**
  * Meka Evaluation task.
  */
-public class MekaEvaluationTask
-	extends AbstractEvaluationTask {
+public class MekaEvaluationTask extends AbstractEvaluationTask {
 
-	/** the threshold option. */
-	protected String m_TOP;
+  /** the threshold option. */
+  protected String m_TOP;
 
-	/** the verbosity option. */
-	protected String m_VOP;
+  /** the verbosity option. */
+  protected String m_VOP;
 
-	/**
-	 * Initializes the task.
-	 *
-	 * @param owner		the owning MultiSearch classifier
-	 * @param train		the training data
-	 * @param test		the test data, can be null
-	 * @param generator		the generator to use
-	 * @param values		the setup values
-	 * @param folds		the number of cross-validation folds
-	 * @param eval		the type of evaluation
-	 * @param classLabel		the class label index (0-based; if applicable)
-	 */
-	public MekaEvaluationTask(
-		MultiSearchCapable owner, Instances train, Instances test,
-		SetupGenerator generator, Point<Object> values, int folds, int eval, int classLabel) {
-		super(owner, train, test, generator, values, folds, eval, classLabel);
-		m_TOP = "PCut1";
-		m_VOP = "3";
-	}
+  /**
+   * Initializes the task.
+   *
+   * @param owner
+   *          the owning MultiSearch classifier
+   * @param train
+   *          the training data
+   * @param test
+   *          the test data, can be null
+   * @param generator
+   *          the generator to use
+   * @param values
+   *          the setup values
+   * @param folds
+   *          the number of cross-validation folds
+   * @param eval
+   *          the type of evaluation
+   * @param classLabel
+   *          the class label index (0-based; if applicable)
+   */
+  public MekaEvaluationTask(final MultiSearchCapable owner, final Instances train, final Instances test, final SetupGenerator generator, final Point<Object> values,
+      final int folds, final int eval, final int classLabel) {
+    super(owner, train, test, generator, values, folds, eval, classLabel);
+    this.m_TOP = "PCut1";
+    this.m_VOP = "3";
+  }
 
-	/**
-	 * Returns whether predictions can be discarded (depends on selected measure).
-	 */
-	protected boolean canDiscardPredictions() {
-		switch (m_Owner.getEvaluation().getSelectedTag().getID()) {
-			default:
-				return true;
-		}
-	}
+  /**
+   * Returns whether predictions can be discarded (depends on selected measure).
+   */
+  protected boolean canDiscardPredictions() {
+    switch (this.m_Owner.getEvaluation().getSelectedTag().getID()) {
+      default:
+        return true;
+    }
+  }
 
-	/**
-	 * Performs the evaluation.
-	 *
-	 * @return false	if evaluation fails
-	 */
-	protected Boolean doRun() throws Exception{
-		Point<Object>	evals;
-		Result eval;
-		MultiLabelClassifier classifier;
-		Performance performance;
-		boolean		completed;
+  /**
+   * Performs the evaluation.
+   *
+   * @return false if evaluation fails
+   */
+  @Override
+  protected Boolean doRun() throws Exception {
+    Point<Object> evals;
+    Result eval;
+    MultiLabelClassifier classifier;
+    Performance performance;
+    boolean completed;
 
-		// setup
-		evals      = m_Generator.evaluate(m_Values);
-		classifier = (MultiLabelClassifier) m_Generator.setup((Serializable) m_Owner.getClassifier(), evals);
+    // setup
+    evals = this.m_Generator.evaluate(this.m_Values);
+    classifier = (MultiLabelClassifier) this.m_Generator.setup((Serializable) this.m_Owner.getClassifier(), evals);
 
-		// evaluate
-		try {
-			if (m_Test == null) {
-				if (m_Folds >= 2) {
-					eval = Evaluation.cvModel(classifier, m_Train, m_Folds, m_TOP, m_VOP);
-				}
-				else {
-					classifier.buildClassifier(m_Train);
-					eval = Evaluation.evaluateModel(classifier, m_Train, m_TOP, m_VOP);
-				}
-			}
-			else {
-				classifier.buildClassifier(m_Train);
-				eval = Evaluation.evaluateModel(classifier, m_Test, m_TOP, m_VOP);
-			}
-			completed = true;
-		}
-		catch (Exception e) {
-			eval = null;
-			System.err.println("Encountered exception while evaluating classifier, skipping!");
-			System.err.println("- Classifier: " + m_Owner.getCommandline(classifier));
-			e.printStackTrace();
-			completed = false;
-		}
+    // evaluate
+    try {
+      if (this.m_Test == null) {
+        if (this.m_Folds >= 2) {
+          eval = Evaluation.cvModel(classifier, this.m_Train, this.m_Folds, this.m_TOP, this.m_VOP);
+        } else {
+          classifier.buildClassifier(this.m_Train);
+          eval = Evaluation.evaluateModel(classifier, this.m_Train, this.m_TOP, this.m_VOP);
+        }
+      } else {
+        classifier.buildClassifier(this.m_Train);
+        eval = Evaluation.evaluateModel(classifier, this.m_Test, this.m_TOP, this.m_VOP);
+      }
+      completed = true;
+    } catch (Exception e) {
+      eval = null;
+      completed = false;
+    }
 
-		// store performance
-		performance = new Performance(
-			m_Values,
-			m_Owner.getFactory().newWrapper(eval),
-			m_Evaluation,
-			m_ClassLabel,
-			(Classifier) m_Generator.setup((Serializable) m_Owner.getClassifier(), evals));
-		m_Owner.getAlgorithm().addPerformance(performance, m_Folds);
+    // store performance
+    performance = new Performance(this.m_Values, this.m_Owner.getFactory().newWrapper(eval), this.m_Evaluation, this.m_ClassLabel,
+        (Classifier) this.m_Generator.setup((Serializable) this.m_Owner.getClassifier(), evals));
+    this.m_Owner.getAlgorithm().addPerformance(performance, this.m_Folds);
 
-		// log
-		m_Owner.log(performance + ": cached=false");
+    // log
+    this.m_Owner.log(performance + ": cached=false");
 
-		return completed;
-	}
+    return completed;
+  }
 }

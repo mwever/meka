@@ -15,6 +15,8 @@
 
 package meka.classifiers.multilabel;
 
+import java.util.Random;
+
 import Jama.Matrix;
 import meka.classifiers.multilabel.NN.AbstractDeepNeuralNet;
 import meka.core.MLUtils;
@@ -28,153 +30,145 @@ import weka.core.TechnicalInformation.Field;
 import weka.core.TechnicalInformation.Type;
 import weka.core.TechnicalInformationHandler;
 
-import java.util.Random;
-
 /**
- * DBPNN.java - Deep Back-Propagation Neural Network.
- * Use an RBM to pre-train the network, then plug in BPNN.
- * <br>
- * See: Geoffrey Hinton and Ruslan Salakhutdinov. <i>Reducing the Dimensionality of Data with Neural Networks</i>. Science. Vol 313(5786), pages 504 - 507. 2006.
- * <br>
+ * DBPNN.java - Deep Back-Propagation Neural Network. Use an RBM to pre-train the network, then plug
+ * in BPNN. <br>
+ * See: Geoffrey Hinton and Ruslan Salakhutdinov. <i>Reducing the Dimensionality of Data with Neural
+ * Networks</i>. Science. Vol 313(5786), pages 504 - 507. 2006. <br>
  *
  * @see BPNN
  * @author Jesse Read
  * @version December 2012
  */
-public class DBPNN extends AbstractDeepNeuralNet implements TechnicalInformationHandler  {
+public class DBPNN extends AbstractDeepNeuralNet implements TechnicalInformationHandler {
 
-	private static final long serialVersionUID = 5007534249445210725L;
-	protected RBM dbm = null;
-	protected long rbm_time = 0;
+  private static final long serialVersionUID = 5007534249445210725L;
+  protected RBM dbm = null;
+  protected long rbm_time = 0;
 
-	@Override
-	public void buildClassifier(Instances D) throws Exception {
-		testCapabilities(D);
+  @Override
+  public void buildClassifier(final Instances D) throws Exception {
+    this.testCapabilities(D);
 
-		// Extract variables
+    // Extract variables
 
-		int L = D.classIndex();
-		int d = D.numAttributes()-L;
-		double X_[][] = MLUtils.getXfromD(D);
-		double Y_[][] = MLUtils.getYfromD(D);
+    int L = D.classIndex();
+    int d = D.numAttributes() - L;
+    double X_[][] = MLUtils.getXfromD(D);
+    double Y_[][] = MLUtils.getYfromD(D);
 
-		// Build an RBM
-		if (getDebug()) System.out.println("Build RBM(s) ... ");
+    // Build an RBM
+    if (this.getDebug()) {
+      System.out.println("Build RBM(s) ... ");
+    }
 
-		String ops[] = this.getOptions();
-		dbm = new DBM(ops);
-		dbm.setE(m_E);
-		((DBM)dbm).setH(m_H, m_N);
+    String ops[] = this.getOptions();
+    this.dbm = new DBM(ops);
+    this.dbm.setE(this.m_E);
+    ((DBM) this.dbm).setH(this.m_H, this.m_N);
 
-		long before = System.currentTimeMillis();
-		dbm.train(X_,m_H); // batch train
-		rbm_time = System.currentTimeMillis() - before;
+    long before = System.currentTimeMillis();
+    this.dbm.train(X_, this.m_H); // batch train
+    this.rbm_time = System.currentTimeMillis() - before;
 
-		if (getDebug()) {
-			Matrix tW[] = dbm.getWs();
-			System.out.println("X = \n"+ MatrixUtils.toString(X_));
-			for(int l = 0; l < tW.length; l++) {
-				System.out.println("W = \n"+ MatrixUtils.toString(tW[l].getArray()));
-			}
-			System.out.println("Y = \n"+ MatrixUtils.toString(Y_));
-		}
+    if (this.getDebug()) {
+      Matrix tW[] = this.dbm.getWs();
+      System.out.println("X = \n" + MatrixUtils.toString(X_));
+      for (int l = 0; l < tW.length; l++) {
+        System.out.println("W = \n" + MatrixUtils.toString(tW[l].getArray()));
+      }
+      System.out.println("Y = \n" + MatrixUtils.toString(Y_));
+    }
 
-		/* Trim W's: instead of (d+1 x h+1), they become (d+1, h)
-		      wwb      ww                                                     
-		      wwb      ww                                                     
-		      wwb  ->  ww                                                     
-		      wwb      ww                                                     
-		      bbb                                                             
-			  (this is because RBMs go both ways -- have biases both ways -- whereas BP only goes up)
-			  TODO the best thing would be to keep different views of the same array ...
-		  */
-		                                                            
-		Matrix W[] = trimBiases(dbm.getWs());
+    /*
+     * Trim W's: instead of (d+1 x h+1), they become (d+1, h) wwb ww wwb ww wwb -> ww wwb ww bbb (this
+     * is because RBMs go both ways -- have biases both ways -- whereas BP only goes up) TODO the best
+     * thing would be to keep different views of the same array ...
+     */
 
-		// Back propagate with batch size of 1 to fine tune the DBM into a supervised DBN
-		if (m_Classifier instanceof BPNN) {
-			if (getDebug())
-				System.out.println("You have chosen to use BPNN (good!)");
-		}
-		else {
-			System.err.println("[WARNING] Was expecting BPNN as the base classifier (will set it now, with default parameters) ...");
-			m_Classifier = new BPNN();
-		}
+    Matrix W[] = trimBiases(this.dbm.getWs());
 
-		int i_Y = W.length-1; 																		// the final W
-		W[i_Y] = RBM.makeW(W[i_Y].getRowDimension()-1,W[i_Y].getColumnDimension()-1,new Random(1)); 	// 
-		((BPNN)m_Classifier).presetWeights(W,L); // this W will be modified
-		((BPNN)m_Classifier).train(X_,Y_);    // could also have called buildClassifier(D)
+    // Back propagate with batch size of 1 to fine tune the DBM into a supervised DBN
+    if (this.m_Classifier instanceof BPNN) {
+      if (this.getDebug()) {
+        System.out.println("You have chosen to use BPNN (good!)");
+      }
+    } else {
+      System.err.println("[WARNING] Was expecting BPNN as the base classifier (will set it now, with default parameters) ...");
+      this.m_Classifier = new BPNN();
+    }
 
-		/*
-		for(int i = 0; i < 1000; i++) {
-			double E = ((BPNN)m_Classifier).update(X_,Y_);
-			//double Ypred[][] = ((BPNN)m_Classifier).popY(X_);
-			System.out.println("i="+i+", MSE="+E);
-		}
-		*/
+    int i_Y = W.length - 1; // the final W
+    W[i_Y] = RBM.makeW(W[i_Y].getRowDimension() - 1, W[i_Y].getColumnDimension() - 1, new Random(1)); //
+    ((BPNN) this.m_Classifier).presetWeights(W, L); // this W will be modified
+    ((BPNN) this.m_Classifier).train(X_, Y_); // could also have called buildClassifier(D)
 
-		if (getDebug()) {
-			Matrix tW[] = W;
-			//System.out.println("X = \n"+M.toString(X_));
-			System.out.println("W = \n"+ MatrixUtils.toString(tW[0].getArray()));
-			System.out.println("W = \n"+ MatrixUtils.toString(tW[1].getArray()));
-			double Ypred[][] = ((BPNN)m_Classifier).popY(X_);
-			System.out.println("Y = \n"+ MatrixUtils.toString(MatrixUtils.threshold(Ypred, 0.5)));
-			//System.out.println("Z = \n"+M.toString(M.threshold(Z,0.5)));
-		}
-	}
+    /*
+     * for(int i = 0; i < 1000; i++) { double E = ((BPNN)m_Classifier).update(X_,Y_); //double Ypred[][]
+     * = ((BPNN)m_Classifier).popY(X_); System.out.println("i="+i+", MSE="+E); }
+     */
 
-	@Override
-	public double[] distributionForInstance(Instance xy) throws Exception {
-		return m_Classifier.distributionForInstance(xy);
-	}
+    if (this.getDebug()) {
+      Matrix tW[] = W;
+      // System.out.println("X = \n"+M.toString(X_));
+      System.out.println("W = \n" + MatrixUtils.toString(tW[0].getArray()));
+      System.out.println("W = \n" + MatrixUtils.toString(tW[1].getArray()));
+      double Ypred[][] = ((BPNN) this.m_Classifier).popY(X_);
+      System.out.println("Y = \n" + MatrixUtils.toString(MatrixUtils.threshold(Ypred, 0.5)));
+      // System.out.println("Z = \n"+M.toString(M.threshold(Z,0.5)));
+    }
+  }
 
-	protected static Matrix trimBiases(Matrix A) {
-		double M_[][] = A.getArray();
-		return new Matrix(MatrixUtils.removeBias(M_));
-		//return new Matrix(M.getArray(),M.getRowDimension(),M.getColumnDimension()-1); // ignore last column
-	}
+  @Override
+  public double[] distributionForInstance(final Instance xy) throws Exception {
+    return this.m_Classifier.distributionForInstance(xy);
+  }
 
-	protected static Matrix[] trimBiases(Matrix M[]) {
-		for(int i = 0; i < M.length; i++) {
-			M[i] = trimBiases(M[i]);
-		}
-		return M;
-	}
+  protected static Matrix trimBiases(final Matrix A) {
+    double M_[][] = A.getArray();
+    return new Matrix(MatrixUtils.removeBias(M_));
+    // return new Matrix(M.getArray(),M.getRowDimension(),M.getColumnDimension()-1); // ignore last
+    // column
+  }
 
-	/**
-	 * Description to display in the GUI.
-	 * 
-	 * @return		the description
-	 */
-	@Override
-	public String globalInfo() {
-		return 
-				"A Deep Back-Propagation Neural Network. "
-				+ "For more information see:\n"
-				+ getTechnicalInformation().toString();
-	}
+  protected static Matrix[] trimBiases(final Matrix M[]) throws InterruptedException {
+    for (int i = 0; i < M.length; i++) {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Thread has been interrupted.");
+      }
+      M[i] = trimBiases(M[i]);
+    }
+    return M;
+  }
 
+  /**
+   * Description to display in the GUI.
+   *
+   * @return the description
+   */
+  @Override
+  public String globalInfo() {
+    return "A Deep Back-Propagation Neural Network. " + "For more information see:\n" + this.getTechnicalInformation().toString();
+  }
 
-	@Override
-	public TechnicalInformation getTechnicalInformation() {
-		TechnicalInformation	result;
+  @Override
+  public TechnicalInformation getTechnicalInformation() {
+    TechnicalInformation result;
 
-		result = new TechnicalInformation(Type.ARTICLE);
-		result.setValue(Field.AUTHOR, "Geoffrey Hinton and Ruslan Salakhutdinov"); 
-		result.setValue(Field.TITLE, "Reducing the Dimensionality of Data with Neural Networks");
-		result.setValue(Field.JOURNAL, "Science");
-		result.setValue(Field.VOLUME, "313");
-		result.setValue(Field.NUMBER, "5786");
-		result.setValue(Field.PAGES, "504-507");
-		result.setValue(Field.YEAR, "2006");
+    result = new TechnicalInformation(Type.ARTICLE);
+    result.setValue(Field.AUTHOR, "Geoffrey Hinton and Ruslan Salakhutdinov");
+    result.setValue(Field.TITLE, "Reducing the Dimensionality of Data with Neural Networks");
+    result.setValue(Field.JOURNAL, "Science");
+    result.setValue(Field.VOLUME, "313");
+    result.setValue(Field.NUMBER, "5786");
+    result.setValue(Field.PAGES, "504-507");
+    result.setValue(Field.YEAR, "2006");
 
-		return result;
-	}
+    return result;
+  }
 
-	public static void main(String args[]) throws Exception {
-		ProblemTransformationMethod.evaluation(new DBPNN(), args);
-	}
+  public static void main(final String args[]) throws Exception {
+    ProblemTransformationMethod.evaluation(new DBPNN(), args);
+  }
 
 }

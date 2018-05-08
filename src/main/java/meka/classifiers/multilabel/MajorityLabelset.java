@@ -17,74 +17,81 @@ package meka.classifiers.multilabel;
 
 import java.util.HashMap;
 
+import meka.classifiers.multitarget.MultiTargetClassifier;
+import meka.core.MLUtils;
 import weka.core.Instance;
 import weka.core.Instances;
-import meka.core.MLUtils;
-import meka.classifiers.multitarget.MultiTargetClassifier;
-import weka.core.RevisionUtils;
 
 /**
- * MajorityLabelset.java - The most simplest multi-label classifier. 
- * <p>Predicts the most common labelset from the training data for <i>all</i> test instances.</p>
- * 
- * @author 	Jesse Read
+ * MajorityLabelset.java - The most simplest multi-label classifier.
+ * <p>
+ * Predicts the most common labelset from the training data for <i>all</i> test instances.
+ * </p>
+ *
+ * @author Jesse Read
  * @version September 2015
  */
 public class MajorityLabelset extends AbstractMultiLabelClassifier implements MultiTargetClassifier {
 
-	/** for serialization. */
-	private static final long serialVersionUID = -5932291001079843869L;
-	
-	protected double prediction[] = null;
-	protected HashMap<String,Double> classFreqs = new HashMap<String,Double>();
+  /** for serialization. */
+  private static final long serialVersionUID = -5932291001079843869L;
 
-	protected double maxValue = 0.0;
+  protected double prediction[] = null;
+  protected HashMap<String, Double> classFreqs = new HashMap<>();
 
-	/**
-	 * Description to display in the GUI.
-	 * 
-	 * @return		the description
-	 */
-	@Override
-	public String globalInfo() {
-		return "Majority Labelset Classifier: Always predict the combination of labels which occurs most frequently in the training set.";
-	}
+  protected double maxValue = 0.0;
 
-	protected void updateCount(Instance x, int L) {
-		String y = MLUtils.toBitString(x,L);
+  /**
+   * Description to display in the GUI.
+   *
+   * @return the description
+   */
+  @Override
+  public String globalInfo() {
+    return "Majority Labelset Classifier: Always predict the combination of labels which occurs most frequently in the training set.";
+  }
 
-		if (classFreqs.containsKey(y)) {
-			double freq = classFreqs.get(y)+x.weight();
-			classFreqs.put(y, freq);
-			if (maxValue < freq) {
-				maxValue = freq;
-				this.prediction = MLUtils.fromBitString(y);
-			}
-		} else {
-			classFreqs.put(y, x.weight());
-		}
-	}
+  protected void updateCount(final Instance x, final int L) throws InterruptedException {
+    String y = MLUtils.toBitString(x, L);
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException("Thread has been interrupted.");
+    }
 
-	@Override
-	public void buildClassifier(Instances D) throws Exception {
-		testCapabilities(D);
-	  	
-		int L = D.classIndex();
-		this.prediction = new double[L];
+    if (this.classFreqs.containsKey(y)) {
+      double freq = this.classFreqs.get(y) + x.weight();
+      this.classFreqs.put(y, freq);
+      if (this.maxValue < freq) {
+        this.maxValue = freq;
+        this.prediction = MLUtils.fromBitString(y);
+      }
+    } else {
+      this.classFreqs.put(y, x.weight());
+    }
+  }
 
-		for(int i = 0; i < D.numInstances(); i++) {
-			updateCount(D.instance(i),L);
-		}
+  @Override
+  public void buildClassifier(final Instances D) throws Exception {
+    this.testCapabilities(D);
 
-	}
+    int L = D.classIndex();
+    this.prediction = new double[L];
 
-	@Override
-	public double[] distributionForInstance(Instance test) throws Exception {
-		return prediction;
-	}
+    for (int i = 0; i < D.numInstances(); i++) {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Thread has been interrupted.");
+      }
+      this.updateCount(D.instance(i), L);
+    }
 
-	public static void main(String args[]) {
-		AbstractMultiLabelClassifier.evaluation(new MajorityLabelset(), args);
-	}
+  }
+
+  @Override
+  public double[] distributionForInstance(final Instance test) throws Exception {
+    return this.prediction;
+  }
+
+  public static void main(final String args[]) {
+    AbstractMultiLabelClassifier.evaluation(new MajorityLabelset(), args);
+  }
 
 }

@@ -15,194 +15,223 @@
 
 package meka.classifiers.multilabel.meta;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Random;
+import java.util.Vector;
+
 import meka.classifiers.multilabel.ProblemTransformationMethod;
 import meka.core.A;
 import meka.core.F;
 import meka.core.MLUtils;
 import meka.core.OptionUtils;
-import weka.core.*;
+import weka.core.Instance;
+import weka.core.Instances;
+import weka.core.Option;
+import weka.core.Randomizable;
+import weka.core.RevisionUtils;
+import weka.core.TechnicalInformation;
 import weka.core.TechnicalInformation.Field;
 import weka.core.TechnicalInformation.Type;
-
-import java.util.*;
+import weka.core.TechnicalInformationHandler;
 
 /**
- * RandomSubspaceML.java - Subsample the attribute space and instance space randomly for each ensemble member. 
- * Basically a generalized version of Random Forests. It is computationally cheaper than EnsembleML for the same number of models.
- * <br>
- * As used with CC in: Jesse Read, Bernhard Pfahringer, Geoff Holmes, Eibe Frank. <i>Classifier Chains for Multi-label Classification</i>. Machine Learning Journal. Springer. Vol. 85(3), pp 333-359. (May 2011).
- * <br>
- * In earlier versions of Meka this class was called <i>BaggingMLq</i> and used Bagging procedure. Now it uses a simple ensemble cut.
- * <br>
+ * RandomSubspaceML.java - Subsample the attribute space and instance space randomly for each
+ * ensemble member. Basically a generalized version of Random Forests. It is computationally cheaper
+ * than EnsembleML for the same number of models. <br>
+ * As used with CC in: Jesse Read, Bernhard Pfahringer, Geoff Holmes, Eibe Frank. <i>Classifier
+ * Chains for Multi-label Classification</i>. Machine Learning Journal. Springer. Vol. 85(3), pp
+ * 333-359. (May 2011). <br>
+ * In earlier versions of Meka this class was called <i>BaggingMLq</i> and used Bagging procedure.
+ * Now it uses a simple ensemble cut. <br>
  *
- * @author 	Jesse Read 
- * @version	June 2014
+ * @author Jesse Read
+ * @version June 2014
  */
-
 
 public class RandomSubspaceML extends MetaProblemTransformationMethod implements TechnicalInformationHandler {
 
-	/** for serialization. */
-	private static final long serialVersionUID = 3608541911971484299L;
+  /** for serialization. */
+  private static final long serialVersionUID = 3608541911971484299L;
 
-	protected int m_AttSizePercent = 50;
+  protected int m_AttSizePercent = 50;
 
-	protected int m_IndicesCut[][] = null;
-	protected Instances m_InstancesTemplates[] = null;
-	protected Instance m_InstanceTemplates[] = null;
+  protected int m_IndicesCut[][] = null;
+  protected Instances m_InstancesTemplates[] = null;
+  protected Instance m_InstanceTemplates[] = null;
 
-	@Override
-	public void buildClassifier(Instances D) throws Exception {
-	  	testCapabilities(D);
-	  	
-		m_InstancesTemplates = new Instances[m_NumIterations];
-		m_InstanceTemplates = new Instance[m_NumIterations];
+  @Override
+  public void buildClassifier(final Instances D) throws Exception {
+    this.testCapabilities(D);
 
-		if (getDebug()) System.out.println("-: Models: ");
+    this.m_InstancesTemplates = new Instances[this.m_NumIterations];
+    this.m_InstanceTemplates = new Instance[this.m_NumIterations];
 
-		m_Classifiers = ProblemTransformationMethod.makeCopies((ProblemTransformationMethod) m_Classifier, m_NumIterations);
-
-		Random r = new Random(m_Seed);
-
-		int N_sub = (D.numInstances()*m_BagSizePercent/100);
-
-		int L = D.classIndex();
-		int d = D.numAttributes() - L;
-		int d_new = d * m_AttSizePercent / 100;
-		m_IndicesCut = new int[m_NumIterations][];
-
-		for(int i = 0; i < m_NumIterations; i++) {
-
-			// Downsize the instance space (exactly like in EnsembleML.java)
-
-			if (getDebug()) 
-				System.out.print("\t"+(i+1)+": ");
-			D.randomize(r);
-			Instances D_cut = new Instances(D,0,N_sub);
-			if (getDebug()) 
-				System.out.print("N="+D.numInstances()+" -> N'="+D_cut.numInstances()+", ");
-
-			// Downsize attribute space
-
-			D_cut.setClassIndex(-1);
-			int indices_a[] = A.make_sequence(L,d+L);
-			A.shuffle(indices_a,r);
-			indices_a = Arrays.copyOfRange(indices_a,0,d-d_new);
-			Arrays.sort(indices_a);
-			m_IndicesCut[i] = A.invert(indices_a,D.numAttributes());
-			D_cut = F.remove(D_cut,indices_a,false);
-			D_cut.setClassIndex(L);
-			if (getDebug()) 
-				System.out.print(" A:="+(D.numAttributes() - L)+" -> A'="+(D_cut.numAttributes() - L)+" ("+m_IndicesCut[i][L]+",...,"+m_IndicesCut[i][m_IndicesCut[i].length-1]+")");
-
-			// Train multi-label classifier
-
-			if (m_Classifiers[i] instanceof Randomizable) ((Randomizable)m_Classifiers[i]).setSeed(m_Seed+i);
-			if(getDebug()) System.out.println(".");
-
-			m_Classifiers[i].buildClassifier(D_cut);
-			m_InstanceTemplates[i] = D_cut.instance(1);
-			m_InstancesTemplates[i] = new Instances(D_cut,0);
-		}
-		if (getDebug()) System.out.println(":-");
-	}
-
-
-	@Override
-	public double[] distributionForInstance(Instance x) throws Exception {
-
-		int L = x.classIndex();
-		double p[] = new double[L];
-
-		for(int i = 0; i < m_NumIterations; i++) {
-			// Use a template Instance from training, and copy values over
-			// (this is faster than copying x and cutting it to shape)
-			Instance x_ = (Instance) m_InstanceTemplates[i];
-			MLUtils.copyValues(x_,x,m_IndicesCut[i]);
-			x_.setDataset(m_InstancesTemplates[i]);
-
-			// TODO, use generic voting scheme somewhere?
-			double d[] = ((ProblemTransformationMethod)m_Classifiers[i]).distributionForInstance(x_);
-			for(int j = 0; j < d.length; j++) {
-				p[j] += d[j];
-			}
-		}
-
-		return p;
-	}
-
-	@Override
-	public Enumeration listOptions() {
-		Vector result = new Vector();
-		result.addElement(new Option("\tSize of attribute space, as a percentage of total attribute space size (must be between 1 and 100, default: 50)", "A", 1, "-A <size percentage>"));
-		OptionUtils.add(result, super.listOptions());
-		return OptionUtils.toEnumeration(result);
-	}
-
-	@Override
-    public void setOptions(String[] options) throws Exception {
-		setAttSizePercent(OptionUtils.parse(options, 'A', 50));
-        super.setOptions(options);
+    if (this.getDebug()) {
+      System.out.println("-: Models: ");
     }
 
-	@Override
-	public String [] getOptions() {
-		List<String> result = new ArrayList<>();
-		OptionUtils.add(result, 'A', getAttSizePercent());
-		OptionUtils.add(result, super.getOptions());
-		return OptionUtils.toArray(result);
-	}
+    this.m_Classifiers = ProblemTransformationMethod.makeCopies((ProblemTransformationMethod) this.m_Classifier, this.m_NumIterations);
 
-	public static void main(String args[]) {
-		ProblemTransformationMethod.evaluation(new RandomSubspaceML(), args);
-	}
+    Random r = new Random(this.m_Seed);
 
-	/**
-	 * Description to display in the GUI.
-	 * 
-	 * @return		the description
-	 */
-	@Override
-	public String globalInfo() {
-		return "Combining several multi-label classifiers in an ensemble where the attribute space for each model is a random subset of the original space.";
-	}
+    int N_sub = (D.numInstances() * this.m_BagSizePercent / 100);
 
-	@Override
-	public TechnicalInformation getTechnicalInformation() {
-		TechnicalInformation	result;
-		
-		result = new TechnicalInformation(Type.ARTICLE);
-		result.setValue(Field.AUTHOR, "Jesse Read, Bernhard Pfahringer, Geoff Holmes, Eibe Frank");
-		result.setValue(Field.TITLE, "Classifier Chains for Multi-label Classification");
-		result.setValue(Field.JOURNAL, "Machine Learning Journal");
-		result.setValue(Field.YEAR, "2011");
-		result.setValue(Field.VOLUME, "85");
-		result.setValue(Field.NUMBER, "3");
-		result.setValue(Field.PAGES, "333-359");
-		
-		return result;
-	}
+    int L = D.classIndex();
+    int d = D.numAttributes() - L;
+    int d_new = d * this.m_AttSizePercent / 100;
+    this.m_IndicesCut = new int[this.m_NumIterations][];
 
-	@Override
-	public String getRevision() {
-		return RevisionUtils.extract("$Revision: 9117 $");
-	}
+    for (int i = 0; i < this.m_NumIterations; i++) {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Thread has been interrupted.");
+      }
 
-	/** 
-     * Sets the percentage of attributes to sample from the original set.
-     */
-	public void setAttSizePercent(int value) {
-		m_AttSizePercent = value;
-	}
+      // Downsize the instance space (exactly like in EnsembleML.java)
 
-    /** 
-     * Gets the percentage of attributes to sample from the original set.
-     */
-	public int getAttSizePercent() {
-		return m_AttSizePercent;
-	}
-	
-	public String attSizePercentTipText() {
-		return "Size of attribute space, as a percentage of total attribute space size";
-	}
+      if (this.getDebug()) {
+        System.out.print("\t" + (i + 1) + ": ");
+      }
+      D.randomize(r);
+      Instances D_cut = new Instances(D, 0, N_sub);
+      if (this.getDebug()) {
+        System.out.print("N=" + D.numInstances() + " -> N'=" + D_cut.numInstances() + ", ");
+      }
+
+      // Downsize attribute space
+
+      D_cut.setClassIndex(-1);
+      int indices_a[] = A.make_sequence(L, d + L);
+      A.shuffle(indices_a, r);
+      indices_a = Arrays.copyOfRange(indices_a, 0, d - d_new);
+      Arrays.sort(indices_a);
+      this.m_IndicesCut[i] = A.invert(indices_a, D.numAttributes());
+      D_cut = F.remove(D_cut, indices_a, false);
+      D_cut.setClassIndex(L);
+      if (this.getDebug()) {
+        System.out.print(" A:=" + (D.numAttributes() - L) + " -> A'=" + (D_cut.numAttributes() - L) + " (" + this.m_IndicesCut[i][L] + ",...,"
+            + this.m_IndicesCut[i][this.m_IndicesCut[i].length - 1] + ")");
+      }
+
+      // Train multi-label classifier
+
+      if (this.m_Classifiers[i] instanceof Randomizable) {
+        ((Randomizable) this.m_Classifiers[i]).setSeed(this.m_Seed + i);
+      }
+      if (this.getDebug()) {
+        System.out.println(".");
+      }
+
+      this.m_Classifiers[i].buildClassifier(D_cut);
+      this.m_InstanceTemplates[i] = D_cut.instance(1);
+      this.m_InstancesTemplates[i] = new Instances(D_cut, 0);
+    }
+    if (this.getDebug()) {
+      System.out.println(":-");
+    }
+  }
+
+  @Override
+  public double[] distributionForInstance(final Instance x) throws Exception {
+
+    int L = x.classIndex();
+    double p[] = new double[L];
+
+    for (int i = 0; i < this.m_NumIterations; i++) {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Thread has been interrupted.");
+      }
+      // Use a template Instance from training, and copy values over
+      // (this is faster than copying x and cutting it to shape)
+      Instance x_ = this.m_InstanceTemplates[i];
+      MLUtils.copyValues(x_, x, this.m_IndicesCut[i]);
+      x_.setDataset(this.m_InstancesTemplates[i]);
+
+      // TODO, use generic voting scheme somewhere?
+      double d[] = ((ProblemTransformationMethod) this.m_Classifiers[i]).distributionForInstance(x_);
+      for (int j = 0; j < d.length; j++) {
+        p[j] += d[j];
+      }
+    }
+
+    return p;
+  }
+
+  @Override
+  public Enumeration listOptions() {
+    Vector result = new Vector();
+    result.addElement(
+        new Option("\tSize of attribute space, as a percentage of total attribute space size (must be between 1 and 100, default: 50)", "A", 1, "-A <size percentage>"));
+    OptionUtils.add(result, super.listOptions());
+    return OptionUtils.toEnumeration(result);
+  }
+
+  @Override
+  public void setOptions(final String[] options) throws Exception {
+    this.setAttSizePercent(OptionUtils.parse(options, 'A', 50));
+    super.setOptions(options);
+  }
+
+  @Override
+  public String[] getOptions() {
+    List<String> result = new ArrayList<>();
+    OptionUtils.add(result, 'A', this.getAttSizePercent());
+    OptionUtils.add(result, super.getOptions());
+    return OptionUtils.toArray(result);
+  }
+
+  public static void main(final String args[]) {
+    ProblemTransformationMethod.evaluation(new RandomSubspaceML(), args);
+  }
+
+  /**
+   * Description to display in the GUI.
+   *
+   * @return the description
+   */
+  @Override
+  public String globalInfo() {
+    return "Combining several multi-label classifiers in an ensemble where the attribute space for each model is a random subset of the original space.";
+  }
+
+  @Override
+  public TechnicalInformation getTechnicalInformation() {
+    TechnicalInformation result;
+
+    result = new TechnicalInformation(Type.ARTICLE);
+    result.setValue(Field.AUTHOR, "Jesse Read, Bernhard Pfahringer, Geoff Holmes, Eibe Frank");
+    result.setValue(Field.TITLE, "Classifier Chains for Multi-label Classification");
+    result.setValue(Field.JOURNAL, "Machine Learning Journal");
+    result.setValue(Field.YEAR, "2011");
+    result.setValue(Field.VOLUME, "85");
+    result.setValue(Field.NUMBER, "3");
+    result.setValue(Field.PAGES, "333-359");
+
+    return result;
+  }
+
+  @Override
+  public String getRevision() {
+    return RevisionUtils.extract("$Revision: 9117 $");
+  }
+
+  /**
+   * Sets the percentage of attributes to sample from the original set.
+   */
+  public void setAttSizePercent(final int value) {
+    this.m_AttSizePercent = value;
+  }
+
+  /**
+   * Gets the percentage of attributes to sample from the original set.
+   */
+  public int getAttSizePercent() {
+    return this.m_AttSizePercent;
+  }
+
+  public String attSizePercentTipText() {
+    return "Size of attribute space, as a percentage of total attribute space size";
+  }
 }

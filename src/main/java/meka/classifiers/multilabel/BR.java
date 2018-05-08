@@ -15,6 +15,12 @@
 
 package meka.classifiers.multilabel;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import meka.core.F;
+import meka.core.MLUtils;
+import meka.core.MultiLabelDrawable;
 /**
  * BR.java - The Binary Relevance Method.
  * The standard baseline Binary Relevance method (BR) -- create a binary problems for each label and learn a model for them individually.
@@ -23,138 +29,138 @@ package meka.classifiers.multilabel;
  */
 import weka.classifiers.AbstractClassifier;
 import weka.classifiers.Classifier;
+import weka.core.Drawable;
 import weka.core.Instance;
 import weka.core.Instances;
-import weka.core.Drawable;
-import meka.core.MultiLabelDrawable;
-import meka.core.MLUtils;
-import meka.core.F;
 import weka.core.RevisionUtils;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class BR extends ProblemTransformationMethod implements MultiLabelDrawable {
 
-	/** for serialization. */
-	private static final long serialVersionUID = -5390512540469007904L;
-	
-	protected Classifier m_MultiClassifiers[] = null;
-	protected Instances m_InstancesTemplates[] = null; 
+  /** for serialization. */
+  private static final long serialVersionUID = -5390512540469007904L;
 
-	/**
-	 * Description to display in the GUI.
-	 * 
-	 * @return		the description
-	 */
-	@Override
-	public String globalInfo() {
-		return 
-				"The Binary Relevance Method.\n"
-				+ "See also MULAN framework:\n"
-				+ "http://mulan.sourceforge.net";
-	}
+  protected Classifier m_MultiClassifiers[] = null;
+  protected Instances m_InstancesTemplates[] = null;
 
-	@Override
-	public void buildClassifier(Instances D) throws Exception {
-		testCapabilities(D);
-	  	
-		int L = D.classIndex();
+  /**
+   * Description to display in the GUI.
+   *
+   * @return the description
+   */
+  @Override
+  public String globalInfo() {
+    return "The Binary Relevance Method.\n" + "See also MULAN framework:\n" + "http://mulan.sourceforge.net";
+  }
 
-		if(getDebug()) System.out.print("Creating "+L+" models ("+m_Classifier.getClass().getName()+"): ");
-		m_MultiClassifiers = AbstractClassifier.makeCopies(m_Classifier,L);
-		m_InstancesTemplates = new Instances[L];
+  @Override
+  public void buildClassifier(final Instances D) throws Exception {
+    this.testCapabilities(D);
 
-		for(int j = 0; j < L; j++) {
+    int L = D.classIndex();
 
-			//Select only class attribute 'j'
-			Instances D_j = F.keepLabels(new Instances(D),L,new int[]{j});
-			D_j.setClassIndex(0);
+    if (this.getDebug()) {
+      System.out.print("Creating " + L + " models (" + this.m_Classifier.getClass().getName() + "): ");
+    }
+    this.m_MultiClassifiers = AbstractClassifier.makeCopies(this.m_Classifier, L);
+    this.m_InstancesTemplates = new Instances[L];
 
-			//Build the classifier for that class
-			m_MultiClassifiers[j].buildClassifier(D_j);
-			if(getDebug()) System.out.print(" " + (D_j.classAttribute().name()));
+    for (int j = 0; j < L; j++) {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Thread has been interrupted.");
+      }
 
-			m_InstancesTemplates[j] = new Instances(D_j, 0);
-		}
-	}
+      // Select only class attribute 'j'
+      Instances D_j = F.keepLabels(new Instances(D), L, new int[] { j });
+      D_j.setClassIndex(0);
 
-	@Override
-	public double[] distributionForInstance(Instance x) throws Exception {
+      // Build the classifier for that class
+      this.m_MultiClassifiers[j].buildClassifier(D_j);
+      if (this.getDebug()) {
+        System.out.print(" " + (D_j.classAttribute().name()));
+      }
 
-		int L = x.classIndex(); 
+      this.m_InstancesTemplates[j] = new Instances(D_j, 0);
+    }
+  }
 
-		double y[] = new double[L];
+  @Override
+  public double[] distributionForInstance(final Instance x) throws Exception {
 
-		for (int j = 0; j < L; j++) {
-			Instance x_j = (Instance)x.copy();
-			x_j.setDataset(null);
-			x_j = MLUtils.keepAttributesAt(x_j,new int[]{j},L);
-			x_j.setDataset(m_InstancesTemplates[j]);
-			//y[j] = m_MultiClassifiers[j].classifyInstance(x_j);
-			y[j] = m_MultiClassifiers[j].distributionForInstance(x_j)[1];
-		}
+    int L = x.classIndex();
 
-		return y;
-	}
+    double y[] = new double[L];
 
-	/**
-	 * Returns the type of graph representing
-	 * the object.
-	 *
-	 * @return the type of graph representing the object (label index as key)
-	 */
-	public Map<Integer,Integer> graphType() {
-		Map<Integer,Integer>	result;
-		int						i;
+    for (int j = 0; j < L; j++) {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Thread has been interrupted.");
+      }
+      Instance x_j = (Instance) x.copy();
+      x_j.setDataset(null);
+      x_j = MLUtils.keepAttributesAt(x_j, new int[] { j }, L);
+      x_j.setDataset(this.m_InstancesTemplates[j]);
+      // y[j] = m_MultiClassifiers[j].classifyInstance(x_j);
+      y[j] = this.m_MultiClassifiers[j].distributionForInstance(x_j)[1];
+    }
 
-		result = new HashMap<Integer,Integer>();
+    return y;
+  }
 
-		if (m_MultiClassifiers != null) {
-			for (i = 0; i < m_MultiClassifiers.length; i++) {
-				if (m_MultiClassifiers[i] instanceof Drawable) {
-					result.put(i, ((Drawable) m_MultiClassifiers[i]).graphType());
-				}
-			}
-		}
+  /**
+   * Returns the type of graph representing the object.
+   *
+   * @return the type of graph representing the object (label index as key)
+   */
+  @Override
+  public Map<Integer, Integer> graphType() {
+    Map<Integer, Integer> result;
+    int i;
 
-		return result;
-	}
+    result = new HashMap<>();
 
-	/**
-	 * Returns a string that describes a graph representing
-	 * the object. The string should be in XMLBIF ver.
-	 * 0.3 format if the graph is a BayesNet, otherwise
-	 * it should be in dotty format.
-	 *
-	 * @return the graph described by a string (label index as key)
-	 * @throws Exception if the graph can't be computed
-	 */
-	public Map<Integer,String> graph() throws Exception {
-		Map<Integer,String>		result;
-		int						i;
+    if (this.m_MultiClassifiers != null) {
+      for (i = 0; i < this.m_MultiClassifiers.length; i++) {
+        if (this.m_MultiClassifiers[i] instanceof Drawable) {
+          result.put(i, ((Drawable) this.m_MultiClassifiers[i]).graphType());
+        }
+      }
+    }
 
-		result = new HashMap<Integer,String>();
+    return result;
+  }
 
-		if (m_MultiClassifiers != null) {
-			for (i = 0; i < m_MultiClassifiers.length; i++) {
-				if (m_MultiClassifiers[i] instanceof Drawable) {
-					result.put(i, ((Drawable) m_MultiClassifiers[i]).graph());
-				}
-			}
-		}
+  /**
+   * Returns a string that describes a graph representing the object. The string should be in XMLBIF
+   * ver. 0.3 format if the graph is a BayesNet, otherwise it should be in dotty format.
+   *
+   * @return the graph described by a string (label index as key)
+   * @throws Exception
+   *           if the graph can't be computed
+   */
+  @Override
+  public Map<Integer, String> graph() throws Exception {
+    Map<Integer, String> result;
+    int i;
 
-		return result;
-	}
+    result = new HashMap<>();
 
+    if (this.m_MultiClassifiers != null) {
+      for (i = 0; i < this.m_MultiClassifiers.length; i++) {
+        if (this.m_MultiClassifiers[i] instanceof Drawable) {
+          result.put(i, ((Drawable) this.m_MultiClassifiers[i]).graph());
+        }
+      }
+    }
 
-	@Override
-	public String getRevision() {
-	    return RevisionUtils.extract("$Revision: 9117 $");
-	}
+    return result;
+  }
 
-	public static void main(String args[]) {
-		ProblemTransformationMethod.evaluation(new BR(), args);
-	}
+  @Override
+  public String getRevision() {
+    return RevisionUtils.extract("$Revision: 9117 $");
+  }
+
+  public static void main(final String args[]) {
+    ProblemTransformationMethod.evaluation(new BR(), args);
+  }
 
 }

@@ -24,63 +24,73 @@ import weka.core.RevisionUtils;
 /**
  * CM.java - Classification Maximization using any multi-label classifier.
  *
- * A specified multi-label classifier is built on the training data. This model is then used to classify unlabelled data (e.g., the test data)
- * The classifier is then retrained with all data, and the cycle continues ... (for I iterations).
+ * A specified multi-label classifier is built on the training data. This model is then used to
+ * classify unlabelled data (e.g., the test data) The classifier is then retrained with all data,
+ * and the cycle continues ... (for I iterations).
  *
  * @version July, 2014
- * @author 	Jesse Read
- * @see 	EM
+ * @author Jesse Read
+ * @see EM
  */
 public class CM extends EM {
 
-	private static final long serialVersionUID = -6297505619194774433L;
+  private static final long serialVersionUID = -6297505619194774433L;
 
-	@Override
-	public String globalInfo() {
-		return "Train a classifier using labelled and unlabelled data (semi-supervised) using Classification Expectation algorithm (a hard version of EM). Unlike EM, can use any classifier here, not necessarily one which gives good probabilistic output.";
-	}
+  @Override
+  public String globalInfo() {
+    return "Train a classifier using labelled and unlabelled data (semi-supervised) using Classification Expectation algorithm (a hard version of EM). Unlike EM, can use any classifier here, not necessarily one which gives good probabilistic output.";
+  }
 
-	@Override
-	public void buildClassifier(Instances D) throws Exception {
-	  	testCapabilities(D);
+  @Override
+  public void buildClassifier(final Instances D) throws Exception {
+    this.testCapabilities(D);
 
-		if (getDebug()) 
-			System.out.println("Initial build ...");
-	  	
-		m_Classifier.buildClassifier(D); 
+    if (this.getDebug()) {
+      System.out.println("Initial build ...");
+    }
 
-		Instances DA = MLUtils.combineInstances(D,D_);
+    this.m_Classifier.buildClassifier(D);
 
-		if (getDebug()) 
-			System.out.print("Performing "+m_I+" 'CM' Iterations: [");
-		for(int i = 0; i < m_I; i++) {
-			if (getDebug())
-				System.out.print(".");
-			// classification
-			updateWeights((ProblemTransformationMethod)m_Classifier, DA);
-			// maximization (of parameters)
-			m_Classifier.buildClassifier(DA);
-		}
-		System.out.println("]");
-	}
+    Instances DA = MLUtils.combineInstances(D, this.D_);
 
-	@Override
-	protected void updateWeights(ProblemTransformationMethod h, Instances D) throws Exception {
-		for(Instance x : D) {
-			double y[] = h.distributionForInstance(x);
-			for(int j = 0; j < y.length; j++) {
-				x.setValue(j,(y[j] < 0.5) ? 0. : 1.);
-			}
-		}
-	}
+    if (this.getDebug()) {
+      System.out.print("Performing " + this.m_I + " 'CM' Iterations: [");
+    }
+    for (int i = 0; i < this.m_I; i++) {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Thread has been interrupted.");
+      }
+      if (this.getDebug()) {
+        System.out.print(".");
+      }
+      // classification
+      this.updateWeights((ProblemTransformationMethod) this.m_Classifier, DA);
+      // maximization (of parameters)
+      this.m_Classifier.buildClassifier(DA);
+    }
+    System.out.println("]");
+  }
 
-	@Override
-	public String getRevision() {
-	    return RevisionUtils.extract("$Revision: 9117 $");
-	}
+  @Override
+  protected void updateWeights(final ProblemTransformationMethod h, final Instances D) throws Exception {
+    for (Instance x : D) {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException("Thread has been interrupted.");
+      }
+      double y[] = h.distributionForInstance(x);
+      for (int j = 0; j < y.length; j++) {
+        x.setValue(j, (y[j] < 0.5) ? 0. : 1.);
+      }
+    }
+  }
 
-	public static void main(String args[]) {
-		ProblemTransformationMethod.evaluation(new CM(), args);
-	}
+  @Override
+  public String getRevision() {
+    return RevisionUtils.extract("$Revision: 9117 $");
+  }
+
+  public static void main(final String args[]) {
+    ProblemTransformationMethod.evaluation(new CM(), args);
+  }
 
 }
