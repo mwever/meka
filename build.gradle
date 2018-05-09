@@ -25,11 +25,10 @@ artifacts {
 }
 
 dependencies {
+	compile project(':weka')
+	
 	// https://mvnrepository.com/artifact/com.googlecode.jfilechooser-bookmarks/jfilechooser-bookmarks
 	compile group: 'com.googlecode.jfilechooser-bookmarks', name: 'jfilechooser-bookmarks', version: '0.1.0'
-	
-	compile project('weka')
-
 
 	testCompile group: 'junit', name: 'junit', version: '4.12'
 	compile 'org.slf4j:slf4j-api:1.7.13'
@@ -52,11 +51,11 @@ dependencies {
 	compile group: 'com.github.fracpete', name: 'multisearch-weka-package', version: '2017.10.1'
 }
 
+
 configurations {
  all*.exclude group: 'nz.ac.waikato.cms.weka', module:'weka-dev'
  all*.exclude group: 'nz.ac.waikato.cms.weka', module:'weka-stable'
 }
-
 repositories {
 	mavenLocal()
     mavenCentral()
