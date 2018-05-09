@@ -30,7 +30,10 @@ dependencies {
 	compile group: 'com.googlecode.jfilechooser-bookmarks', name: 'jfilechooser-bookmarks', version: '0.1.0'
 	
 	// https://mvnrepository.com/artifact/nz.ac.waikato.cms.weka/weka-stable
-	compile group: 'nz.ac.waikato.cms.weka', name: 'weka-stable', version: '3.9.2'
+	//compile group: 'nz.ac.waikato.cms.weka', name: 'weka-stable', version: '3.9.2'
+	
+	//compile project('weka')
+	implementation 'com.github.mwever:weka:master-SNAPSHOT'
 
 	compile group: 'com.github.fracpete', name: 'multisearch-weka-package', version: '2017.10.1'
 	
@@ -80,4 +83,5 @@ repositories {
     flatDir {
     	dirs 'lib'
     }
+    maven { url 'https://jitpack.io' }
 }
