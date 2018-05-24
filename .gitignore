@@ -39,3 +39,4 @@ syntax: glob
 
 # mkdocs
 site/
+/bin/
