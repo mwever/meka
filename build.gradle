@@ -1,5 +1,6 @@
 plugins {
 	id 'java'
+	id 'maven'
 	id 'eclipse-wtp'
 }
 
@@ -24,9 +25,7 @@ artifacts {
     archives sourcesJar
 }
 
-dependencies {	
-	compile project(':weka')
-	
+dependencies {
 	// https://mvnrepository.com/artifact/com.googlecode.jfilechooser-bookmarks/jfilechooser-bookmarks
 	compile group: 'com.googlecode.jfilechooser-bookmarks', name: 'jfilechooser-bookmarks', version: '0.1.0'
 
@@ -36,7 +35,6 @@ dependencies {
 	
 	compile group: 'org.kramerlab', name: 'bmad', version: '2.4'
 	compile group: 'gov.nist.math', name: 'jama', version: '1.0.3'
-	compile group: 'net.sf.meka.thirdparty', name: 'mulan', version: '1.4.0'
 	compile group: 'net.sf.trove4j', name: 'trove4j', version: '3.0.1'
 	compile group: 'com.github.fracpete', name: 'jclipboardhelper', version: '0.1.1'
 	compile group: 'org.markdownj', name: 'markdownj', version: '0.3.0-1.0.2b4'
@@ -45,21 +43,41 @@ dependencies {
 	// weka requiring projects
 	compile group: 'org.kramerlab', name: 'autoencoder', version: '0.1'
 	compile group: 'com.github.fracpete', name: 'multisearch-weka-package', version: '2017.10.1'
+	
+	compile group: 'net.sf.meka.thirdparty', name: 'mulan', version: '1.4.0'
+	compile ('de.upb.isys:interruptable-weka:0.0.7') {
+	  	exclude group: 'log4j'
+    	exclude group: 'org.slf4j'
+	}
 }
 
 
 configurations {
- all*.exclude group: 'nz.ac.waikato.cms.weka', module:'weka-dev'
- all*.exclude group: 'nz.ac.waikato.cms.weka', module:'weka-stable'
+	all*.exclude group: 'nz.ac.waikato.cms.weka', module:'weka-dev'
+	all*.exclude group: 'nz.ac.waikato.cms.weka', module:'weka-stable'
 }
+
 repositories {
+	mavenCentral()
 	mavenLocal()
-    mavenCentral()
-	maven {
-        url "http://clojars.org/repo/"
-	url "https://jitpack.io"
-    }
+	maven { url "https://jitpack.io" }
+	maven { url "http://clojars.org/repo/" }
+	maven { url "https://plugins.gradle.org/m2/" }
+	maven { url "https://nexus.cs.upb.de/repository/maven-releases/" }
     flatDir {
     	dirs 'libs'
+    }
+}
+
+uploadArchives {
+    repositories {
+       mavenDeployer {
+             repository(url: "https://nexus.cs.upb.de/repository/maven-releases") {
+             	authentication(userName: "gradleuser", password: "c0b11c2a6d")
+			 }
+             pom.version = "0.0.4"
+             pom.artifactId = "meka"
+             pom.groupId = "de.upb.isys"
+       }
     }
 }

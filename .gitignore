@@ -40,3 +40,4 @@ syntax: glob
 # mkdocs
 site/
 /bin/
+/.gradle/
