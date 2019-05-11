@@ -1,8 +1,26 @@
 plugins {
-	id 'java'
-	id 'maven'
-	id 'eclipse-wtp'
+	id 'nebula.release' version '6.0.2'
+	id "nebula.project" version "3.4.0"
+	id "nebula.maven-base-publish" version "5.1.4"
 }
+
+//IDE
+apply plugin: "java"
+apply plugin: "eclipse"
+apply plugin: "idea"
+
+//Other
+apply plugin: "maven"
+apply plugin: "jacoco"
+apply plugin: "signing"
+
+//Nebula
+apply plugin: 'nebula.project'
+apply plugin: 'nebula.nebula-release'
+apply plugin: 'nebula.maven-base-publish'
+
+project.group = 'ai.libs.thirdparty'
+project.version = '0.1.0'
 
 sourceSets {
     main {
@@ -26,29 +44,26 @@ artifacts {
 }
 
 dependencies {
-	// https://mvnrepository.com/artifact/com.googlecode.jfilechooser-bookmarks/jfilechooser-bookmarks
 	compile group: 'com.googlecode.jfilechooser-bookmarks', name: 'jfilechooser-bookmarks', version: '0.1.0'
-
-	testCompile group: 'junit', name: 'junit', version: '4.12'
-	compile 'org.slf4j:slf4j-api:1.7.13'
-	runtime 'org.slf4j:slf4j-log4j12:1.7.13', 'log4j:log4j:1.2.17'
-	
 	compile group: 'org.kramerlab', name: 'bmad', version: '2.4'
 	compile group: 'gov.nist.math', name: 'jama', version: '1.0.3'
 	compile group: 'net.sf.trove4j', name: 'trove4j', version: '3.0.1'
 	compile group: 'com.github.fracpete', name: 'jclipboardhelper', version: '0.1.1'
 	compile group: 'org.markdownj', name: 'markdownj', version: '0.3.0-1.0.2b4'
 	compile group: 'net.sf.meka.thirdparty', name: 'mst', version: '4.0'
-	
 	// weka requiring projects
 	compile group: 'org.kramerlab', name: 'autoencoder', version: '0.1'
 	compile group: 'com.github.fracpete', name: 'multisearch-weka-package', version: '2017.10.1'
 	
 	compile group: 'net.sf.meka.thirdparty', name: 'mulan', version: '1.4.0'
-	compile ('de.upb.isys:interruptable-weka:0.0.7') {
+	compile ('ai.libs.thirdparty:interruptible-weka:0.1.0') {
 	  	exclude group: 'log4j'
     	exclude group: 'org.slf4j'
 	}
+
+	testCompile group: 'junit', name: 'junit', version: '4.12'
+	compile 'org.slf4j:slf4j-api:1.7.13'
+	runtime 'org.slf4j:slf4j-log4j12:1.7.13', 'log4j:log4j:1.2.17'
 }
 
 
@@ -60,24 +75,61 @@ configurations {
 repositories {
 	mavenCentral()
 	mavenLocal()
-	maven { url "https://jitpack.io" }
-	maven { url "http://clojars.org/repo/" }
-	maven { url "https://plugins.gradle.org/m2/" }
-	maven { url "https://nexus.cs.upb.de/repository/maven-releases/" }
     flatDir {
     	dirs 'libs'
     }
 }
 
 uploadArchives {
-    repositories {
-       mavenDeployer {
-             repository(url: "https://nexus.cs.upb.de/repository/maven-releases") {
-             	authentication(userName: "gradleuser", password: "c0b11c2a6d")
-			 }
-             pom.version = "0.0.4"
-             pom.artifactId = "meka"
-             pom.groupId = "de.upb.isys"
-       }
-    }
+	repositories {
+		mavenDeployer {
+			beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+			repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+        		authentication(userName: ossrhUsername, password: ossrhPassword)
+      		}	
+      		snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+        		authentication(userName: ossrhUsername, password: ossrhPassword)
+      		}
+
+      		pom.project {
+        		name 'Interruptible MEKA'
+        		packaging 'jar'
+        		artifactId 'interruptible-meka'
+        		// optionally artifactId can be defined here 
+        		description 'A MEKA fork which allows to interrupt training and prediction procedures of the models.'
+        		url 'https://libs.ai'
+
+        		scm {
+          			connection 'scm:git:https://github.com/mwever/meka.git'
+          			developerConnection 'scm:git:https://github.com/mwever/meka.git'
+          			url 'https://github.com/mwever/meka'
+        		}
+
+        		licenses {
+          			license {
+            			name 'GPLv3'
+            			url 'https://www.gnu.org/licenses/gpl-3.0.en.html'
+          			}
+        		}
+
+        		developers {
+          			developer {
+            			id 'fmohr'
+            			name 'Felix Mohr'
+            			email 'felix.mohr@upb.de'
+          			}
+          			developer {
+          				id 'mwever'    
+          			    name 'Marcel Wever'
+          			    email 'marcel.wever@upb.de'
+          			}
+          			developer {
+          			    id 'ahetzer'
+          			    name 'Alexander Tornede'
+          			    email 'alexander.tornede@upb.de'
+          			}
+        		}
+      		}
+    	}
+  	}
 }

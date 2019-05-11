@@ -20,6 +20,14 @@
 
 package meka.core.multisearch;
 
+import java.io.File;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.Vector;
+import java.util.concurrent.Future;
+
 import weka.classifiers.Classifier;
 import weka.classifiers.meta.multisearch.AbstractEvaluationTask;
 import weka.classifiers.meta.multisearch.AbstractMultiThreadedSearch;
@@ -33,15 +41,6 @@ import weka.core.setupgenerator.Point;
 import weka.core.setupgenerator.Space;
 import weka.filters.Filter;
 import weka.filters.unsupervised.instance.Resample;
-
-import java.io.File;
-import java.io.Serializable;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Vector;
-import java.util.concurrent.Future;
 
 /**
  <!-- globalinfo-start -->
@@ -112,8 +111,7 @@ import java.util.concurrent.Future;
  * @author FracPete (fracpete at waikato dot ac dot nz)
  * @version $Revision$
  */
-public class MekaSearch
-	extends AbstractMultiThreadedSearch {
+public class MekaSearch extends AbstractMultiThreadedSearch {
 
 	private static final long serialVersionUID = -3579744329581176799L;
 
@@ -146,39 +144,16 @@ public class MekaSearch
 	 */
 	@Override
 	public String globalInfo() {
-		return
-			"Performs a search of an arbitrary number of parameters of a classifier "
-				+ "and chooses the best setup found for the actual training.\n"
-				+ "The properties being explored are totally up to the user.\n"
-				+ "\n"
-				+ "E.g., if you have a FilteredClassifier selected as base classifier, "
-				+ "sporting a PLSFilter and you want to explore the number of PLS components, "
-				+ "then your property will be made up of the following components:\n"
-				+ " - filter: referring to the FilteredClassifier's property (= PLSFilter)\n"
-				+ " - numComponents: the actual property of the PLSFilter that we want to modify\n"
-				+ "And assembled, the property looks like this:\n"
-				+ "  filter.numComponents\n"
-				+ "\n"
-				+ "The initial space is worked on with 2-fold CV to determine the values "
-				+ "of the parameters for the selected type of evaluation (e.g., "
-				+ "accuracy). The best point in the space is then taken as center and a "
-				+ "10-fold CV is performed with the adjacent parameters. If better parameters "
-				+ "are found, then this will act as new center and another 10-fold CV will "
-				+ "be performed (kind of hill-climbing). This process is repeated until "
-				+ "no better pair is found or the best pair is on the border of the parameter "
-				+ "space.\n"
-				+ "The number of CV-folds for the initial and subsequent spaces can be "
-				+ "adjusted, of course.\n"
-				+ "\n"
-				+ "Instead of using cross-validation, it is possible to specify test sets, "
-				+ "for the initial space evaluation and the subsequent ones.\n"
-				+ "\n"
-				+ "The outcome of a mathematical function (= double), MultiSearch will convert "
-				+ "to integers (values are just cast to int), booleans (0 is false, otherwise "
-				+ "true), float, char and long if necessary.\n"
-				+ "Via a user-supplied 'list' of parameters (blank-separated), one can also "
-				+ "set strings and selected tags (drop-down comboboxes in Weka's "
-				+ "GenericObjectEditor). Classnames with options (e.g., classifiers with "
+		return "Performs a search of an arbitrary number of parameters of a classifier " + "and chooses the best setup found for the actual training.\n" + "The properties being explored are totally up to the user.\n" + "\n"
+				+ "E.g., if you have a FilteredClassifier selected as base classifier, " + "sporting a PLSFilter and you want to explore the number of PLS components, " + "then your property will be made up of the following components:\n"
+				+ " - filter: referring to the FilteredClassifier's property (= PLSFilter)\n" + " - numComponents: the actual property of the PLSFilter that we want to modify\n" + "And assembled, the property looks like this:\n"
+				+ "  filter.numComponents\n" + "\n" + "The initial space is worked on with 2-fold CV to determine the values " + "of the parameters for the selected type of evaluation (e.g., "
+				+ "accuracy). The best point in the space is then taken as center and a " + "10-fold CV is performed with the adjacent parameters. If better parameters "
+				+ "are found, then this will act as new center and another 10-fold CV will " + "be performed (kind of hill-climbing). This process is repeated until "
+				+ "no better pair is found or the best pair is on the border of the parameter " + "space.\n" + "The number of CV-folds for the initial and subsequent spaces can be " + "adjusted, of course.\n" + "\n"
+				+ "Instead of using cross-validation, it is possible to specify test sets, " + "for the initial space evaluation and the subsequent ones.\n" + "\n"
+				+ "The outcome of a mathematical function (= double), MultiSearch will convert " + "to integers (values are just cast to int), booleans (0 is false, otherwise " + "true), float, char and long if necessary.\n"
+				+ "Via a user-supplied 'list' of parameters (blank-separated), one can also " + "set strings and selected tags (drop-down comboboxes in Weka's " + "GenericObjectEditor). Classnames with options (e.g., classifiers with "
 				+ "their options) are possible as well.";
 	}
 
@@ -190,44 +165,29 @@ public class MekaSearch
 	@Override
 	public Enumeration listOptions() {
 		Vector result;
-		Enumeration   	en;
+		Enumeration en;
 
 		result = new Vector();
 
-		result.addElement(new Option(
-			"\tThe size (in percent) of the sample to search the inital space with.\n"
-				+ "\t(default: 100)",
-			"sample-size", 1, "-sample-size <num>"));
+		result.addElement(new Option("\tThe size (in percent) of the sample to search the inital space with.\n" + "\t(default: 100)", "sample-size", 1, "-sample-size <num>"));
 
-		result.addElement(new Option(
-			"\tThe number of cross-validation folds for the initial space.\n"
-				+ "\tNumbers smaller than 2 turn off cross-validation and just\n"
-				+ "\tperform evaluation on the training set.\n"
-				+ "\t(default: 2)",
-			"initial-folds", 1, "-initial-folds <num>"));
+		result.addElement(new Option("\tThe number of cross-validation folds for the initial space.\n" + "\tNumbers smaller than 2 turn off cross-validation and just\n" + "\tperform evaluation on the training set.\n" + "\t(default: 2)",
+				"initial-folds", 1, "-initial-folds <num>"));
 
-		result.addElement(new Option(
-			"\tThe number of cross-validation folds for the subsequent sub-spaces.\n"
-				+ "\tNumbers smaller than 2 turn off cross-validation and just\n"
-				+ "\tperform evaluation on the training set.\n"
-				+ "\t(default: 10)",
-			"subsequent-folds", 1, "-subsequent-folds <num>"));
+		result.addElement(
+				new Option("\tThe number of cross-validation folds for the subsequent sub-spaces.\n" + "\tNumbers smaller than 2 turn off cross-validation and just\n" + "\tperform evaluation on the training set.\n" + "\t(default: 10)",
+						"subsequent-folds", 1, "-subsequent-folds <num>"));
 
-		result.addElement(new Option(
-			"\tThe (optional) test set to use for the initial space.\n"
-				+ "\tGets ignored if pointing to a file. Overrides cross-validation.\n"
-				+ "\t(default: .)",
-			"initial-test-set", 1, "-initial-test-set <filename>"));
+		result.addElement(
+				new Option("\tThe (optional) test set to use for the initial space.\n" + "\tGets ignored if pointing to a file. Overrides cross-validation.\n" + "\t(default: .)", "initial-test-set", 1, "-initial-test-set <filename>"));
 
-		result.addElement(new Option(
-			"\tThe (optional) test set to use for the subsequent sub-spaces.\n"
-				+ "\tGets ignored if pointing to a file. Overrides cross-validation.\n"
-				+ "\t(default: .)",
-			"subsequent-test-set", 1, "-subsequent-test-set <filename>"));
+		result.addElement(new Option("\tThe (optional) test set to use for the subsequent sub-spaces.\n" + "\tGets ignored if pointing to a file. Overrides cross-validation.\n" + "\t(default: .)", "subsequent-test-set", 1,
+				"-subsequent-test-set <filename>"));
 
 		en = super.listOptions();
-		while (en.hasMoreElements())
+		while (en.hasMoreElements()) {
 			result.addElement(en.nextElement());
+		}
 
 		return result.elements();
 	}
@@ -239,30 +199,31 @@ public class MekaSearch
 	 */
 	@Override
 	public String[] getOptions() {
-		int       		i;
-		Vector<String>    	result;
-		String[]  		options;
+		int i;
+		Vector<String> result;
+		String[] options;
 
 		result = new Vector<String>();
 
 		result.add("-sample-size");
-		result.add("" + getSampleSizePercent());
+		result.add("" + this.getSampleSizePercent());
 
 		result.add("-initial-folds");
-		result.add("" + getInitialSpaceNumFolds());
+		result.add("" + this.getInitialSpaceNumFolds());
 
 		result.add("-subsequent-folds");
-		result.add("" + getSubsequentSpaceNumFolds());
+		result.add("" + this.getSubsequentSpaceNumFolds());
 
 		result.add("-initial-test-set");
-		result.add("" + getInitialSpaceTestSet());
+		result.add("" + this.getInitialSpaceTestSet());
 
 		result.add("-subsequent-test-set");
-		result.add("" + getSubsequentSpaceTestSet());
+		result.add("" + this.getSubsequentSpaceTestSet());
 
 		options = super.getOptions();
-		for (i = 0; i < options.length; i++)
+		for (i = 0; i < options.length; i++) {
 			result.add(options[i]);
+		}
 
 		return result.toArray(new String[result.size()]);
 	}
@@ -274,38 +235,43 @@ public class MekaSearch
 	 * @throws Exception	if setting of options fails
 	 */
 	@Override
-	public void setOptions(String[] options) throws Exception {
-		String		tmpStr;
+	public void setOptions(final String[] options) throws Exception {
+		String tmpStr;
 
 		tmpStr = Utils.getOption("sample-size", options);
-		if (tmpStr.length() != 0)
-			setSampleSizePercent(Double.parseDouble(tmpStr));
-		else
-			setSampleSizePercent(100);
+		if (tmpStr.length() != 0) {
+			this.setSampleSizePercent(Double.parseDouble(tmpStr));
+		} else {
+			this.setSampleSizePercent(100);
+		}
 
 		tmpStr = Utils.getOption("initial-folds", options);
-		if (tmpStr.length() != 0)
-			setInitialSpaceNumFolds(Integer.parseInt(tmpStr));
-		else
-			setInitialSpaceNumFolds(2);
+		if (tmpStr.length() != 0) {
+			this.setInitialSpaceNumFolds(Integer.parseInt(tmpStr));
+		} else {
+			this.setInitialSpaceNumFolds(2);
+		}
 
 		tmpStr = Utils.getOption("subsequent-folds", options);
-		if (tmpStr.length() != 0)
-			setSubsequentSpaceNumFolds(Integer.parseInt(tmpStr));
-		else
-			setSubsequentSpaceNumFolds(10);
+		if (tmpStr.length() != 0) {
+			this.setSubsequentSpaceNumFolds(Integer.parseInt(tmpStr));
+		} else {
+			this.setSubsequentSpaceNumFolds(10);
+		}
 
 		tmpStr = Utils.getOption("initial-test-set", options);
-		if (tmpStr.length() != 0)
-			setInitialSpaceTestSet(new File(tmpStr));
-		else
-			setInitialSpaceTestSet(new File(System.getProperty("user.dir")));
+		if (tmpStr.length() != 0) {
+			this.setInitialSpaceTestSet(new File(tmpStr));
+		} else {
+			this.setInitialSpaceTestSet(new File(System.getProperty("user.dir")));
+		}
 
 		tmpStr = Utils.getOption("subsequent-test-set", options);
-		if (tmpStr.length() != 0)
-			setSubsequentSpaceTestSet(new File(tmpStr));
-		else
-			setSubsequentSpaceTestSet(new File(System.getProperty("user.dir")));
+		if (tmpStr.length() != 0) {
+			this.setSubsequentSpaceTestSet(new File(tmpStr));
+		} else {
+			this.setSubsequentSpaceTestSet(new File(System.getProperty("user.dir")));
+		}
 
 		super.setOptions(options);
 	}
@@ -326,7 +292,7 @@ public class MekaSearch
 	 * @return the sample size.
 	 */
 	public double getSampleSizePercent() {
-		return m_SampleSize;
+		return this.m_SampleSize;
 	}
 
 	/**
@@ -334,8 +300,8 @@ public class MekaSearch
 	 *
 	 * @param value the sample size for the initial space search.
 	 */
-	public void setSampleSizePercent(double value) {
-		m_SampleSize = value;
+	public void setSampleSizePercent(final double value) {
+		this.m_SampleSize = value;
 	}
 
 	/**
@@ -345,10 +311,7 @@ public class MekaSearch
 	 * 			displaying in the explorer/experimenter gui
 	 */
 	public String initialSpaceNumFoldsTipText() {
-		return
-			"The number of cross-validation folds when evaluating the initial "
-				+ "space; values smaller than 2 turn cross-validation off and simple "
-				+ "evaluation on the training set is performed.";
+		return "The number of cross-validation folds when evaluating the initial " + "space; values smaller than 2 turn cross-validation off and simple " + "evaluation on the training set is performed.";
 	}
 
 	/**
@@ -357,7 +320,7 @@ public class MekaSearch
 	 * @return the number of folds.
 	 */
 	public int getInitialSpaceNumFolds() {
-		return m_InitialSpaceNumFolds;
+		return this.m_InitialSpaceNumFolds;
 	}
 
 	/**
@@ -365,8 +328,8 @@ public class MekaSearch
 	 *
 	 * @param value the number of folds.
 	 */
-	public void setInitialSpaceNumFolds(int value) {
-		m_InitialSpaceNumFolds = value;
+	public void setInitialSpaceNumFolds(final int value) {
+		this.m_InitialSpaceNumFolds = value;
 	}
 
 	/**
@@ -376,10 +339,7 @@ public class MekaSearch
 	 * 			displaying in the explorer/experimenter gui
 	 */
 	public String subsequentSpaceNumFoldsTipText() {
-		return
-			"The number of cross-validation folds when evaluating the subsequent "
-				+ "sub-spaces; values smaller than 2 turn cross-validation off and simple "
-				+ "evaluation on the training set is performed.";
+		return "The number of cross-validation folds when evaluating the subsequent " + "sub-spaces; values smaller than 2 turn cross-validation off and simple " + "evaluation on the training set is performed.";
 	}
 
 	/**
@@ -388,7 +348,7 @@ public class MekaSearch
 	 * @return the number of folds.
 	 */
 	public int getSubsequentSpaceNumFolds() {
-		return m_SubsequentSpaceNumFolds;
+		return this.m_SubsequentSpaceNumFolds;
 	}
 
 	/**
@@ -396,8 +356,8 @@ public class MekaSearch
 	 *
 	 * @param value the number of folds.
 	 */
-	public void setSubsequentSpaceNumFolds(int value) {
-		m_SubsequentSpaceNumFolds = value;
+	public void setSubsequentSpaceNumFolds(final int value) {
+		this.m_SubsequentSpaceNumFolds = value;
 	}
 
 	/**
@@ -407,9 +367,7 @@ public class MekaSearch
 	 * 			displaying in the explorer/experimenter gui
 	 */
 	public String initialSpaceTestSetTipText() {
-		return
-			"The (optional) test set to use for evaluating the initial search space; "
-				+ "overrides cross-validation; gets ignored if pointing to a directory.";
+		return "The (optional) test set to use for evaluating the initial search space; " + "overrides cross-validation; gets ignored if pointing to a directory.";
 	}
 
 	/**
@@ -418,7 +376,7 @@ public class MekaSearch
 	 * @return the number of folds.
 	 */
 	public File getInitialSpaceTestSet() {
-		return m_InitialSpaceTestSet;
+		return this.m_InitialSpaceTestSet;
 	}
 
 	/**
@@ -426,8 +384,8 @@ public class MekaSearch
 	 *
 	 * @param value the test set, ignored if dir.
 	 */
-	public void setInitialSpaceTestSet(File value) {
-		m_InitialSpaceTestSet = value;
+	public void setInitialSpaceTestSet(final File value) {
+		this.m_InitialSpaceTestSet = value;
 	}
 
 	/**
@@ -437,9 +395,7 @@ public class MekaSearch
 	 * 			displaying in the explorer/experimenter gui
 	 */
 	public String subsequentSpaceTestSetTipText() {
-		return
-			"The (optional) test set to use for evaluating the subsequent search sub-spaces; "
-				+ "overrides cross-validation; gets ignored if pointing to a directory.";
+		return "The (optional) test set to use for evaluating the subsequent search sub-spaces; " + "overrides cross-validation; gets ignored if pointing to a directory.";
 	}
 
 	/**
@@ -448,7 +404,7 @@ public class MekaSearch
 	 * @return the test set, ignored if dir.
 	 */
 	public File getSubsequentSpaceTestSet() {
-		return m_SubsequentSpaceTestSet;
+		return this.m_SubsequentSpaceTestSet;
 	}
 
 	/**
@@ -456,8 +412,8 @@ public class MekaSearch
 	 *
 	 * @param value the test set, ignored if dir.
 	 */
-	public void setSubsequentSpaceTestSet(File value) {
-		m_SubsequentSpaceTestSet = value;
+	public void setSubsequentSpaceTestSet(final File value) {
+		this.m_SubsequentSpaceTestSet = value;
 	}
 
 	/**
@@ -472,92 +428,97 @@ public class MekaSearch
 	 * @return		the best point (not actual parameters!)
 	 * @throws Exception	if setup or training fails
 	 */
-	protected Performance determineBestInSpace(Space space, Instances train, Instances test, int folds) throws Exception {
-		Performance			result;
-		int				i;
-		Enumeration<Point<Object>> enm;
-		Performance			performance;
-		Point<Object>		values;
-		boolean			allCached;
-		Performance			p1;
-		Performance			p2;
-		AbstractEvaluationTask newTask;
-		int				classLabel;
-
-		m_Performances.clear();
-
-		if (folds >= 2)
-			log("Determining best values with " + folds + "-fold CV in space:\n" + space + "\n");
-		else
-			log("Determining best values with evaluation on training set in space:\n" + space + "\n");
-
-		enm         = space.values();
-		allCached   = true;
-		m_NumSetups = space.size();
-		if (train.classAttribute().isNominal())
-			classLabel = m_Owner.getClassLabelIndex(train.classAttribute().numValues());
-		else
-			classLabel = -1;
-
-		ArrayList<Future<Boolean>> results = new ArrayList<Future<Boolean>>();
-		while (enm.hasMoreElements()) {
-			values = enm.nextElement();
-
-			// already calculated?
-			if (m_Cache.isCached(folds, values)) {
-				performance = m_Cache.get(folds, values);
-				m_Performances.add(performance);
-				m_Trace.add(new AbstractMap.SimpleEntry<Integer, Performance>(folds, performance));
-				log(performance + ": cached=true");
-			}
-			else {
-				allCached = false;
-				newTask   = m_Owner.getFactory().newTask(m_Owner, train, test, m_Owner.getGenerator(), values, folds, m_Owner.getEvaluation().getSelectedTag().getID(), classLabel);
-				results.add(m_ExecutorPool.submit(newTask));
-			}
-		}
-
-		// wait for execution to finish
+	protected Performance determineBestInSpace(final Space space, final Instances train, final Instances test, final int folds) throws Exception {
 		try {
-			for (Future<Boolean> future : results) {
-				if (!future.get()) {
-					throw new IllegalStateException("Execution of evaluaton thread failed.");
+			Performance result;
+			int i;
+			Enumeration<Point<Object>> enm;
+			Performance performance;
+			Point<Object> values;
+			boolean allCached;
+			Performance p1;
+			Performance p2;
+			AbstractEvaluationTask newTask;
+			int classLabel;
+
+			this.m_Performances.clear();
+
+			if (folds >= 2) {
+				this.log("Determining best values with " + folds + "-fold CV in space:\n" + space + "\n");
+			} else {
+				this.log("Determining best values with evaluation on training set in space:\n" + space + "\n");
+			}
+
+			enm = space.values();
+			allCached = true;
+			this.m_NumSetups = space.size();
+			if (train.classAttribute().isNominal()) {
+				classLabel = this.m_Owner.getClassLabelIndex(train.classAttribute().numValues());
+			} else {
+				classLabel = -1;
+			}
+
+			ArrayList<Future<Boolean>> results = new ArrayList<Future<Boolean>>();
+			while (enm.hasMoreElements()) {
+				values = enm.nextElement();
+
+				// already calculated?
+				if (this.m_Cache.isCached(folds, values)) {
+					performance = this.m_Cache.get(folds, values);
+					this.m_Performances.add(performance);
+					this.m_Trace.add(new AbstractMap.SimpleEntry<Integer, Performance>(folds, performance));
+					this.log(performance + ": cached=true");
+				} else {
+					allCached = false;
+					newTask = this.m_Owner.getFactory().newTask(this.m_Owner, train, test, this.m_Owner.getGenerator(), values, folds, this.m_Owner.getEvaluation().getSelectedTag().getID(), classLabel);
+					results.add(this.m_ExecutorPool.submit(newTask));
 				}
 			}
-		} catch (Exception e) {
-			throw new IllegalStateException("Thread-based execution of evaluation tasks failed: " +
-				e.getMessage());
-		}
 
-		if (allCached) {
-			log("All points were already cached - abnormal state!");
-			throw new IllegalStateException("All points were already cached - abnormal state!");
-		}
-
-		// sort list
-		Collections.sort(m_Performances, new PerformanceComparator(m_Owner.getEvaluation().getSelectedTag().getID(), m_Owner.getMetrics()));
-
-		result = m_Performances.firstElement();
-
-		// check whether all performances are the same
-		m_UniformPerformance = true;
-		p1 = m_Performances.get(0);
-		for (i = 1; i < m_Performances.size(); i++) {
-			p2 = m_Performances.get(i);
-			if (p2.getPerformance(m_Owner.getEvaluation().getSelectedTag().getID()) != p1.getPerformance(m_Owner.getEvaluation().getSelectedTag().getID())) {
-				m_UniformPerformance = false;
-				break;
+			// wait for execution to finish
+			try {
+				for (Future<Boolean> future : results) {
+					if (!future.get()) {
+						throw new IllegalStateException("Execution of evaluaton thread failed.");
+					}
+				}
+			} catch (Exception e) {
+				throw new IllegalStateException("Thread-based execution of evaluation tasks failed: " + e.getMessage());
 			}
+
+			if (allCached) {
+				this.log("All points were already cached - abnormal state!");
+				throw new IllegalStateException("All points were already cached - abnormal state!");
+			}
+
+			// sort list
+			Collections.sort(this.m_Performances, new PerformanceComparator(this.m_Owner.getEvaluation().getSelectedTag().getID(), this.m_Owner.getMetrics()));
+
+			result = this.m_Performances.firstElement();
+
+			// check whether all performances are the same
+			this.m_UniformPerformance = true;
+			p1 = this.m_Performances.get(0);
+			for (i = 1; i < this.m_Performances.size(); i++) {
+				p2 = this.m_Performances.get(i);
+				if (p2.getPerformance(this.m_Owner.getEvaluation().getSelectedTag().getID()) != p1.getPerformance(this.m_Owner.getEvaluation().getSelectedTag().getID())) {
+					this.m_UniformPerformance = false;
+					break;
+				}
+			}
+			if (this.m_UniformPerformance) {
+				this.log("All performances are the same!");
+			}
+
+			this.logPerformances(space, this.m_Performances);
+			this.log("\nBest performance:\n" + this.m_Performances.firstElement());
+
+			this.m_Performances.clear();
+
+			return result;
+		} finally {
+			this.m_ExecutorPool.shutdownNow();
 		}
-		if (m_UniformPerformance)
-			log("All performances are the same!");
-
-		logPerformances(space, m_Performances);
-		log("\nBest performance:\n" + m_Performances.firstElement());
-
-		m_Performances.clear();
-
-		return result;
 	}
 
 	/**
@@ -567,77 +528,75 @@ public class MekaSearch
 	 * @return 		the best point (not evaluated parameters!)
 	 * @throws Exception 	if something goes wrong
 	 */
-	protected Performance findBest(Instances inst) throws Exception {
-		Performance		result;
-		Point<Integer>	center;
-		Space		neighborSpace;
-		boolean		finished;
-		Point<Object>	evals;
-		Performance		resultOld;
-		int			iteration;
+	protected Performance findBest(final Instances inst) throws Exception {
+		Performance result;
+		Point<Integer> center;
+		Space neighborSpace;
+		boolean finished;
+		Point<Object> evals;
+		Performance resultOld;
+		int iteration;
 		Instances sample;
 		Resample resample;
 		Classifier cls;
 
-		log("Step 1:\n");
+		this.log("Step 1:\n");
 
 		// generate sample?
-		if (getSampleSizePercent() == 100) {
+		if (this.getSampleSizePercent() == 100) {
 			sample = inst;
-		}
-		else {
-			log("Generating sample (" + getSampleSizePercent() + "%)");
+		} else {
+			this.log("Generating sample (" + this.getSampleSizePercent() + "%)");
 			resample = new Resample();
-			resample.setRandomSeed(retrieveOwner().getSeed());
-			resample.setSampleSizePercent(getSampleSizePercent());
+			resample.setRandomSeed(this.retrieveOwner().getSeed());
+			resample.setSampleSizePercent(this.getSampleSizePercent());
 			resample.setInputFormat(inst);
 			sample = Filter.useFilter(inst, resample);
 		}
 
-		iteration            = 0;
-		m_UniformPerformance = false;
+		iteration = 0;
+		this.m_UniformPerformance = false;
 
 		// find first center
-		log("\n=== Initial space - Start ===");
-		result = determineBestInSpace(m_Space, sample, m_InitialSpaceTestInst, m_InitialSpaceNumFolds);
-		log("\nResult of Step 1: " + result + "\n");
-		log("=== Initial space - End ===\n");
+		this.log("\n=== Initial space - Start ===");
+		result = this.determineBestInSpace(this.m_Space, sample, this.m_InitialSpaceTestInst, this.m_InitialSpaceNumFolds);
+		this.log("\nResult of Step 1: " + result + "\n");
+		this.log("=== Initial space - End ===\n");
 
-		finished = m_UniformPerformance;
+		finished = this.m_UniformPerformance;
 
 		if (!finished) {
 			do {
 				iteration++;
 				resultOld = (Performance) result.clone();
-				center    = m_Space.getLocations(result.getValues());
+				center = this.m_Space.getLocations(result.getValues());
 				// on border? -> finished
-				if (m_Space.isOnBorder(center)) {
-					log("Center is on border of space.");
+				if (this.m_Space.isOnBorder(center)) {
+					this.log("Center is on border of space.");
 					finished = true;
 				}
 
 				// new space with current best one at center and immediate neighbors
 				// around it
 				if (!finished) {
-					neighborSpace = m_Space.subspace(center);
-					result = determineBestInSpace(neighborSpace, sample, m_SubsequentSpaceTestInst, m_SubsequentSpaceNumFolds);
-					log("\nResult of Step 2/Iteration " + (iteration) + ":\n" + result);
-					finished = m_UniformPerformance;
+					neighborSpace = this.m_Space.subspace(center);
+					result = this.determineBestInSpace(neighborSpace, sample, this.m_SubsequentSpaceTestInst, this.m_SubsequentSpaceNumFolds);
+					this.log("\nResult of Step 2/Iteration " + (iteration) + ":\n" + result);
+					finished = this.m_UniformPerformance;
 
 					// no improvement?
 					if (result.getValues().equals(resultOld.getValues())) {
 						finished = true;
-						log("\nNo better point found.");
+						this.log("\nNo better point found.");
 					}
 				}
-			}
-			while (!finished);
+			} while (!finished);
 		}
 
-		log("\nFinal result: " + result);
-		evals = m_Owner.getGenerator().evaluate(result.getValues());
-		cls = (Classifier) m_Owner.getGenerator().setup((Serializable) m_Owner.getClassifier(), evals);
-		log("Classifier: " + getCommandline(cls));
+		this.log("\nFinal result: " + result);
+		evals = this.m_Owner.getGenerator().evaluate(result.getValues());
+		cls = (Classifier) this.m_Owner.getGenerator().setup(this.m_Owner.getClassifier(), evals);
+		this.log("Classifier: " + this.getCommandline(cls));
 
 		return result;
 	}
@@ -648,29 +607,31 @@ public class MekaSearch
 	 * @param data	the current training data
 	 * @throws Exception	if test sets are not compatible with training data
 	 */
-	protected void loadTestData(Instances data) throws Exception {
-		String		msg;
+	protected void loadTestData(final Instances data) throws Exception {
+		String msg;
 
-		m_InitialSpaceTestInst = null;
-		if (m_InitialSpaceTestSet.exists() && !m_InitialSpaceTestSet.isDirectory()) {
-			m_InitialSpaceTestInst = DataSource.read(m_InitialSpaceTestSet.getAbsolutePath());
-			m_InitialSpaceTestInst.setClassIndex(data.classIndex());
-			msg = data.equalHeadersMsg(m_InitialSpaceTestInst);
-			if (msg != null)
-				throw new IllegalArgumentException("Test set for initial space not compatible with training dta:\n" +  msg);
-			m_InitialSpaceTestInst.deleteWithMissingClass();
-			log("Using test set for initial space: " + m_InitialSpaceTestSet);
+		this.m_InitialSpaceTestInst = null;
+		if (this.m_InitialSpaceTestSet.exists() && !this.m_InitialSpaceTestSet.isDirectory()) {
+			this.m_InitialSpaceTestInst = DataSource.read(this.m_InitialSpaceTestSet.getAbsolutePath());
+			this.m_InitialSpaceTestInst.setClassIndex(data.classIndex());
+			msg = data.equalHeadersMsg(this.m_InitialSpaceTestInst);
+			if (msg != null) {
+				throw new IllegalArgumentException("Test set for initial space not compatible with training dta:\n" + msg);
+			}
+			this.m_InitialSpaceTestInst.deleteWithMissingClass();
+			this.log("Using test set for initial space: " + this.m_InitialSpaceTestSet);
 		}
 
-		m_SubsequentSpaceTestInst = null;
-		if (m_SubsequentSpaceTestSet.exists() && !m_SubsequentSpaceTestSet.isDirectory()) {
-			m_SubsequentSpaceTestInst = DataSource.read(m_SubsequentSpaceTestSet.getAbsolutePath());
-			m_SubsequentSpaceTestInst.setClassIndex(data.classIndex());
-			msg = data.equalHeadersMsg(m_SubsequentSpaceTestInst);
-			if (msg != null)
-				throw new IllegalArgumentException("Test set for subsequent sub-spaces not compatible with training dta:\n" +  msg);
-			m_SubsequentSpaceTestInst.deleteWithMissingClass();
-			log("Using test set for subsequent sub-spaces: " + m_InitialSpaceTestSet);
+		this.m_SubsequentSpaceTestInst = null;
+		if (this.m_SubsequentSpaceTestSet.exists() && !this.m_SubsequentSpaceTestSet.isDirectory()) {
+			this.m_SubsequentSpaceTestInst = DataSource.read(this.m_SubsequentSpaceTestSet.getAbsolutePath());
+			this.m_SubsequentSpaceTestInst.setClassIndex(data.classIndex());
+			msg = data.equalHeadersMsg(this.m_SubsequentSpaceTestInst);
+			if (msg != null) {
+				throw new IllegalArgumentException("Test set for subsequent sub-spaces not compatible with training dta:\n" + msg);
+			}
+			this.m_SubsequentSpaceTestInst.deleteWithMissingClass();
+			this.log("Using test set for subsequent sub-spaces: " + this.m_InitialSpaceTestSet);
 		}
 	}
 
@@ -682,19 +643,19 @@ public class MekaSearch
 	 * @throws Exception	if search fails
 	 */
 	@Override
-	public SearchResult doSearch(Instances data) throws Exception {
-		SearchResult	result;
-		Point<Object>	evals;
-		Performance		performance;
+	public SearchResult doSearch(final Instances data) throws Exception {
+		SearchResult result;
+		Point<Object> evals;
+		Performance performance;
 
-		loadTestData(data);
+		this.loadTestData(data);
 
-		performance        = findBest(new Instances(data));
-		evals              = m_Owner.getGenerator().evaluate(performance.getValues());
-		result             = new SearchResult();
-		result.classifier  = (Classifier) m_Owner.getGenerator().setup((Serializable) m_Owner.getClassifier(), evals);
+		performance = this.findBest(new Instances(data));
+		evals = this.m_Owner.getGenerator().evaluate(performance.getValues());
+		result = new SearchResult();
+		result.classifier = (Classifier) this.m_Owner.getGenerator().setup(this.m_Owner.getClassifier(), evals);
 		result.performance = performance;
-		result.values      = evals;
+		result.values = evals;
 
 		return result;
 	}
